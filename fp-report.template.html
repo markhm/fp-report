@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__REPORT_TITLE__ — __APP_NAME__</title>
+<style>
+  /* ---- Theme: injected from the project's THEME_FILE (see fp-report.conf).
+     Defines the --token contract the CSS + JS colour maps depend on. ---- */
+__THEME_CSS__
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);background-image:var(--motif);background-attachment:fixed;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px;line-height:1.45}
+  a{color:var(--link);text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px 20px 80px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+  .brand{display:flex;align-items:center;gap:15px}
+  .brand-logo{height:52px;width:auto;display:block;flex:0 0 auto}
+  /* Theme-correct logo: dark wordmark on paper, white wordmark on navy. */
+  .logo-dark{display:none}
+  .logo-light{display:block}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) .logo-light{display:none}
+    :root:not([data-theme="light"]) .logo-dark{display:block}
+  }
+  :root[data-theme="dark"] .logo-light, html[data-theme="dark"] .logo-light{display:none}
+  :root[data-theme="dark"] .logo-dark, html[data-theme="dark"] .logo-dark{display:block}
+  :root[data-theme="light"] .logo-light{display:block}
+  :root[data-theme="light"] .logo-dark{display:none}
+  .appname{font-size:11.5px;font-weight:680;text-transform:uppercase;letter-spacing:.09em;color:var(--link);margin:0 0 2px;line-height:1}
+  h1{font-size:19px;margin:0;font-weight:700;color:var(--head);letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:12.5px}
+  .theme-btn{margin-left:auto;background:var(--surface);border:1px solid var(--border);color:var(--ink-2);
+    border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    font-weight:650;margin:26px 0 10px}
+  /* tabs */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:26px 0 14px}
+  .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--ink-2);font:inherit;font-size:13.5px;font-weight:600;padding:9px 14px;cursor:pointer;margin-bottom:-1px}
+  .tab .n{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--head);border-bottom-color:var(--link)}
+  .tab.active .n{color:var(--ink-2)}
+  .tabs label.chk{margin-left:auto;align-self:center;font-size:12.5px;color:var(--ink-2);
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  body.hide-done .echild.is-done{display:none}
+  .panel[hidden]{display:none}
+  /* expandable epic */
+  .epic{cursor:pointer}
+  .epic .caret{color:var(--muted);transition:transform .12s ease;display:inline-block;width:1em}
+  .epic.open .caret{transform:rotate(90deg)}
+  .epic.childless .caret{opacity:.4}          /* "Epic"-titled issue with no sub-issues yet */
+  .epic-children{background:var(--surface-2);border-top:1px solid var(--border)}
+  .epic-children[hidden]{display:none}
+  .echild{display:grid;grid-template-columns:118px 1fr auto auto 60px;gap:12px;align-items:center;
+    padding:6px 14px 6px 30px;border-top:1px solid var(--border);font-size:12.5px}
+  .echild:first-child{border-top:0}
+  .echild .eeid{color:var(--muted);font-variant-numeric:tabular-nums}
+  .echild .eet{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .echild .eeidle{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px}
+  /* ---- KPI tiles ---- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .kpi{padding:12px 14px}
+  .kpi .v{font-size:27px;font-weight:680;letter-spacing:-.01em;line-height:1.1}
+  .kpi .l{color:var(--ink-2);font-size:12px;margin-top:3px}
+  .kpi.sig{border-left:3px solid var(--accent,var(--baseline))}
+  .kpi .note{font-size:11px;color:var(--muted);margin-top:2px}
+  /* ---- distribution bars ---- */
+  .dist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:760px){.dist{grid-template-columns:1fr}}
+  .distbody{padding:12px 14px}
+  .brow{display:grid;grid-template-columns:96px 1fr 34px;align-items:center;gap:8px;margin:5px 0}
+  .brow .bl{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+  .track{height:9px;background:var(--track);border-radius:5px;overflow:hidden;display:block}
+  .fill{display:block;height:100%;border-radius:5px;min-width:2px}
+  .brow .bn{font-size:12px;color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  /* ---- epics ---- */
+  .epic{padding:11px 14px;border-top:1px solid var(--border);display:grid;
+    grid-template-columns:1fr 220px auto;gap:14px;align-items:center}
+  .epic:first-child{border-top:0}
+  .epic .et{font-weight:560;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .epic .eid{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .pbar{height:10px;background:var(--track);border-radius:5px;overflow:hidden;display:flex}
+  .pbar > i{display:block;height:100%}
+  .epic .ec{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+  .epic .er{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+  /* ---- badges ---- */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:560;
+    padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+  .badge .dot{width:8px;height:8px}
+  .badge.icon::before{font-size:11px;line-height:1}
+  /* ---- filters ---- */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .filters select,.filters input{background:var(--surface);border:1px solid var(--border);
+    color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12.5px;font-family:inherit}
+  .filters input[type=search]{min-width:190px}
+  .filters #fEpic{max-width:360px}                 /* epic titles are long — don't let the select dominate the row */
+  /* checkbox toggles stay together as one block and wrap as a unit (never orphan a single box) */
+  .toggles{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .chk{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  .count{color:var(--ink-2);font-size:12.5px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .count b{color:var(--head);font-weight:680}
+  /* ---- table ---- */
+  .twrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{position:sticky;top:0;background:var(--surface);color:var(--muted);font-weight:600;
+    font-size:11px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;white-space:nowrap;z-index:1}
+  th.sorted::after{content:" ▾";opacity:.7}
+  th.sorted.asc::after{content:" ▴"}
+  td.num{font-variant-numeric:tabular-nums;text-align:right}
+  tr.blocked td.tt{opacity:.72}
+  .ttl{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .flag{font-size:11px;color:var(--serious);font-weight:600}
+  .flag.stale{color:var(--warning)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.twocol{grid-template-columns:1fr}}
+  ol.deps{margin:0;padding:6px 0 6px 0;list-style:none}
+  ol.deps li{padding:6px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:baseline}
+  ol.deps li:first-child{border-top:0}
+  ol.deps .n{font-variant-numeric:tabular-nums;font-weight:650;color:var(--ink);min-width:22px}
+  .empty{padding:12px 14px;color:var(--muted)}
+  /* right-click-to-copy affordance + confirmation toast */
+  [data-id]{cursor:context-menu}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+    background:var(--head);color:var(--surface);font-size:12.5px;font-weight:560;
+    padding:8px 14px;border-radius:8px;box-shadow:0 6px 22px rgba(0,0,0,.22);
+    opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:50;
+    font-variant-numeric:tabular-nums}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{margin-top:30px;color:var(--muted);font-size:11.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img class="brand-logo logo-light" src="__LOGO_LIGHT__" alt="__PROJECT_NAME__">
+      <img class="brand-logo logo-dark" src="__LOGO_DARK__" alt="__PROJECT_NAME__">
+      <div>
+        <div class="appname">__APP_NAME__</div>
+        <h1>__REPORT_TITLE__</h1>
+        <div class="sub" id="meta"></div>
+      </div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">◐ theme</button>
+  </header>
+
+  <h2>Signals</h2>
+  <section class="kpis card" id="kpis" style="border:0;background:transparent;padding:0"></section>
+
+  <h2>Open backlog composition</h2>
+  <section class="dist">
+    <div class="card distbody"><div style="font-weight:600;margin-bottom:8px">By priority</div><div id="distPrio"></div></div>
+    <div class="card distbody"><div style="font-weight:600;margin-bottom:8px">By status</div><div id="distStatus"></div></div>
+  </section>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
+    <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
+    <label class="chk"><input type="checkbox" id="hideDone"> hide done</label>
+  </nav>
+
+  <div class="panel" id="panel-epics">
+    <h2>Epic roadmap <span class="sub" style="text-transform:none;letter-spacing:0">— parents with children plus open issues titled &ldquo;Epic&rdquo;, by urgency · click a row to expand</span></h2>
+    <section class="card" id="epics"></section>
+  </div>
+
+  <div class="panel" id="panel-issues" hidden>
+  <h2>Prioritise — open issues <span class="sub" style="text-transform:none;letter-spacing:0">— right-click a row to copy its ID</span></h2>
+  <div class="filters" id="filters">
+    <input type="search" id="q" placeholder="search title / id…">
+    <select id="fPrio"><option value="">any priority</option></select>
+    <select id="fStatus"><option value="">any status</option></select>
+    <select id="fEpic"><option value="">any epic</option></select>
+    <div class="toggles">
+      <label class="chk"><input type="checkbox" id="fBlocked"> blocked only</label>
+      <label class="chk"><input type="checkbox" id="fStale"> stale &gt;14d</label>
+      <label class="chk"><input type="checkbox" id="fUnprio"> unprioritised</label>
+      <label class="chk"><input type="checkbox" id="fNoParent" checked> no parent</label>
+      <label class="chk"><input type="checkbox" id="fNoChildren" checked> no children</label>
+    </div>
+    <span class="count" id="tCount"></span>
+  </div>
+  <section class="card twrap"><table id="tbl"><thead></thead><tbody></tbody></table></section>
+
+  <h2>Dependency signals</h2>
+  <section class="twocol">
+    <div class="card"><div class="distbody" style="font-weight:600">Unblock first — open issues blocking others</div><ol class="deps" id="blocking"></ol></div>
+    <div class="card"><div class="distbody" style="font-weight:600">Blocked — open issues waiting on unmet deps</div><ol class="deps" id="blockedList"></ol></div>
+  </section>
+  </div><!-- /panel-issues -->
+
+  <footer id="foot"></footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="fp-data">__FP_DATA__</script>
+<script>
+"use strict";
+const GENERATED_AT = "__GENERATED_AT__";
+const RAW = JSON.parse(document.getElementById("fp-data").textContent);
+const ISSUES = (RAW.issues || RAW || []);
+const NOW = new Date(GENERATED_AT).getTime() || Date.now();
+const DAY = 86400000;
+const IDP = "__ID_PREFIX__" + "-";       // fp short-id prefix, e.g. PMDS- (injected from fp-report.conf)
+
+// ---- status model (configurable — injected from fp-report.status.json, mirrors workflow.ts) ----
+const STATUS_CONFIG = __STATUS_CONFIG__;
+const STATUS_LIST = STATUS_CONFIG.statuses || [];
+// Semantic colour names → theme CSS vars (light/dark aware). A raw #hex or var(...) passes through.
+const COLOR_VARS = {neutral:"--muted", grey:"--ink-2", gray:"--ink-2", blue:"--blue", gold:"--blue",
+  teal:"--teal", purple:"--purple", indigo:"--aqua", mint:"--mint", green:"--good", success:"--good",
+  orange:"--serious", amber:"--warning", red:"--critical", critical:"--critical"};
+const statusColor = c => !c ? "var(--muted)" : (/^(var\(|#)/.test(c) ? c : `var(${COLOR_VARS[c]||"--muted"})`);
+// role: "open" = active work; "done" = terminal complete; "rejected" = terminal, won't-do.
+// A dependency is "satisfied" (MET) once it is done OR rejected.
+const OPEN = new Set(STATUS_LIST.filter(s=>s.role==="open").map(s=>s.key));
+const DONE = new Set(STATUS_LIST.filter(s=>s.role==="done").map(s=>s.key));
+const MET  = new Set(STATUS_LIST.filter(s=>s.role==="done"||s.role==="rejected").map(s=>s.key));
+const OPEN_ORDER = STATUS_LIST.filter(s=>s.role==="open").map(s=>s.key);   // registry order, for dist + filter
+const PRIO_ORDER = {critical:0, high:1, medium:2, low:3, "":4, null:4, undefined:4};
+const PRIO_META = {
+  critical:{label:"Critical", color:"var(--critical)", icon:"⏫"},
+  high:    {label:"High",     color:"var(--serious)",  icon:"🔼"},
+  medium:  {label:"Medium",   color:"var(--warning)",  icon:"◆"},
+  low:     {label:"Low",      color:"var(--muted)",    icon:"▽"},
+  unset:   {label:"Unset",    color:"var(--baseline)", icon:"—"},
+};
+// STATUS_META (label + theme-aware colour) built from the configurable registry above.
+const STATUS_META = Object.fromEntries(
+  STATUS_LIST.map(s=>[s.key, {label:s.label||s.key, color:statusColor(s.color)}]));
+const prioKey = p => (p && PRIO_META[p]) ? p : "unset";
+const days = ts => { const t = Date.parse(ts||""); return isNaN(t)?null:Math.floor((NOW-t)/DAY); };
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---- index + derive ----
+const byId = new Map(ISSUES.map(i=>[i.id,i]));
+const kids = new Map();                 // parentId -> children[]
+const dependents = new Map();           // depId -> [issues depending on it]
+for(const i of ISSUES){
+  if(i.parent){ (kids.get(i.parent)||kids.set(i.parent,[]).get(i.parent)).push(i); }
+  for(const d of (i.dependencies||[])){ (dependents.get(d)||dependents.set(d,[]).get(d)).push(i); }
+}
+for(const i of ISSUES){
+  i._open = OPEN.has(i.status);
+  i._age = days(i.createdAt);
+  i._stale = days(i.updatedAt);
+  i._isStale = i._open && (i._stale!=null && i._stale>14);
+  i._unmet = (i.dependencies||[]).map(d=>byId.get(d)).filter(d=>d && !MET.has(d.status));
+  i._blocked = i._open && i._unmet.length>0;
+  i._blockingOpen = (dependents.get(i.id)||[]).filter(x=>x._open===undefined?OPEN.has(x.status):x._open).length;
+  i._unprio = i._open && !PRIO_META[i.priority];
+  const d = (i.description||"").trim();
+  i._badDesc = /^\/\S+\.(md|txt|json)$/.test(d) || d==="";
+}
+const shortOf = id => (byId.get(id)?.shortId) ? IDP+byId.get(id).shortId : (id||"").slice(0,8);
+const openIssues = ISSUES.filter(i=>i._open);
+
+// ---- meta ----
+document.getElementById("meta").textContent =
+  `${ISSUES.length} issues · ${openIssues.length} open · generated ${new Date(NOW).toLocaleString()}`;
+
+// ---- KPIs ----
+const wip = ISSUES.filter(i=>i.status==="in-progress");
+const kpi = [
+  {v:openIssues.length, l:"Open (active)"},
+  {v:wip.length, l:"WIP — in progress", accent:wip.length>8?"var(--serious)":"var(--good)",
+     note:wip.length>8?"above a healthy WIP limit":"within WIP limit"},
+  {v:openIssues.filter(i=>i.priority==="critical").length, l:"Critical open", accent:"var(--critical)", icon:"⏫"},
+  {v:openIssues.filter(i=>i.priority==="high").length, l:"High open", accent:"var(--serious)"},
+  {v:ISSUES.filter(i=>i._blocked).length, l:"Blocked (unmet deps)", accent:"var(--warning)"},
+  {v:ISSUES.filter(i=>i._isStale).length, l:"Stale >14d", accent:"var(--warning)"},
+  {v:openIssues.filter(i=>i._unprio).length, l:"Unprioritised open", accent:"var(--baseline)"},
+  {v:ISSUES.filter(i=>i._open&&i._badDesc).length, l:"Hygiene: bad descriptions", accent:"var(--serious)"},
+];
+document.getElementById("kpis").innerHTML = kpi.map(k=>`
+  <div class="card kpi ${k.accent?'sig':''}" ${k.accent?`style="--accent:${k.accent}"`:''}>
+    <div class="v">${k.v}</div><div class="l">${k.icon?k.icon+" ":""}${esc(k.l)}</div>
+    ${k.note?`<div class="note">${esc(k.note)}</div>`:""}</div>`).join("");
+
+// ---- distributions (open) ----
+function distBars(el, groups, colorFn){
+  const max = Math.max(1, ...groups.map(g=>g.n));
+  el.innerHTML = groups.map(g=>`
+    <div class="brow">
+      <span class="bl"><span class="dot" style="background:${g.color}"></span>${esc(g.label)}</span>
+      <span class="track"><span class="fill" style="width:${(g.n/max*100).toFixed(1)}%;background:${g.color}"></span></span>
+      <span class="bn">${g.n}</span>
+    </div>`).join("");
+}
+distBars(document.getElementById("distPrio"),
+  ["critical","high","medium","low","unset"].map(p=>({label:PRIO_META[p].label,
+     color:PRIO_META[p].color, n:openIssues.filter(i=>prioKey(i.priority)===p).length})));
+distBars(document.getElementById("distStatus"),
+  OPEN_ORDER.map(s=>({label:STATUS_META[s].label,
+     color:STATUS_META[s].color, n:openIssues.filter(i=>i.status===s).length})));
+
+// ---- epic roadmap ----
+// An "epic" = any issue with children, OR any issue whose title contains the whole
+// word "Epic" (e.g. "Epic: …" containers not yet broken into sub-issues).
+const isEpicTitle = i => /\bepic\b/i.test(i.title||"");
+const epics = ISSUES.filter(i=>kids.has(i.id) || isEpicTitle(i)).map(e=>{
+  const ch = kids.get(e.id) || [];
+  const done = ch.filter(c=>DONE.has(c.status)).length;
+  const openc = ch.filter(c=>c._open).length;
+  const other = ch.length-done-openc;
+  const hp = prioKey(e.priority);   // the epic's OWN priority — child priorities are scoped to the epic, not global
+  return {e, total:ch.length, done, openc, other, hp};
+})                                             // active roadmap: epics with open children,
+.filter(x=> x.openc>0 || (isEpicTitle(x.e) && x.e._open))  // plus still-open "Epic"-titled issues (incl. childless)
+.sort((a,b)=> (PRIO_ORDER[a.hp]-PRIO_ORDER[b.hp]) || (b.openc-a.openc) || (b.total-a.total));
+document.getElementById("tabEpicsN").textContent = epics.length;
+function childRow(c){
+  return `<div class="echild${DONE.has(c.status)?" is-done":""}" data-id="${IDP}${c.shortId}">
+    <span class="eeid">${IDP}${c.shortId}</span>
+    <span class="eet" title="${esc(c.title)}">${esc(c.title)}</span>
+    ${prioBadge(c.priority)}
+    ${statusBadge(c.status)}
+    <span class="eeidle">${c._stale!=null?c._stale+"d":"—"}</span>
+  </div>`;
+}
+document.getElementById("epics").innerHTML = epics.length ? epics.map((x,idx)=>{
+  const t=x.total, dpct=t?x.done/t*100:0, opct=t?x.openc/t*100:0, rpct=t?x.other/t*100:0;
+  const pm = PRIO_META[x.hp];
+  const ch = (kids.get(x.e.id)||[]).slice().sort((a,b)=>
+    ((a._open?0:1)-(b._open?0:1)) ||
+    (PRIO_ORDER[prioKey(a.priority)]-PRIO_ORDER[prioKey(b.priority)]) ||
+    (a.status<b.status?-1:a.status>b.status?1:0));
+  const sLabel = (STATUS_META[x.e.status]||{label:x.e.status}).label;
+  const ecLine = t
+    ? `${IDP}${x.e.shortId} · ${x.done}/${x.total} done · ${x.openc} open${x.other?` · ${x.other} other`:""}`
+    : `${IDP}${x.e.shortId} · ${sLabel} · no sub-issues yet`;
+  return `<div class="epic${t?"":" childless"}" data-eidx="${idx}">
+    <div><div class="et" title="${esc(x.e.title)}"><span class="caret">▸</span> ${esc(x.e.title)}</div>
+      <div class="ec">${ecLine}</div></div>
+    <div><div class="pbar">
+      <i style="width:${dpct}%;background:var(--good)"></i>
+      <i style="width:${opct}%;background:var(--blue)"></i>
+      <i style="width:${rpct}%;background:var(--baseline)"></i></div></div>
+    <div class="er"><span class="badge" style="color:${pm.color}">${pm.icon} ${pm.label}</span></div>
+  </div>
+  <div class="epic-children" data-eidx="${idx}" hidden>${ch.length?ch.map(childRow).join(""):`<div class="empty">No sub-issues yet — this epic hasn't been broken down.</div>`}</div>`;
+}).join("") : `<div class="empty">No epics to show.</div>`;
+document.getElementById("epics").addEventListener("click", ev=>{
+  const row = ev.target.closest(".epic"); if(!row) return;
+  const kidsEl = row.nextElementSibling;
+  if(!kidsEl || !kidsEl.classList.contains("epic-children")) return;
+  const willOpen = kidsEl.hasAttribute("hidden");
+  kidsEl.toggleAttribute("hidden", !willOpen);
+  row.classList.toggle("open", willOpen);
+});
+
+// ---- prioritisation table ----
+function prioBadge(p){const m=PRIO_META[prioKey(p)];
+  return `<span class="badge" style="color:${m.color}"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`;}
+function statusBadge(s){const m=STATUS_META[s]||{label:s,color:"var(--muted)"};
+  return `<span class="badge"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`;}
+
+const COLS = [
+  {k:"shortId", t:"ID", get:i=>IDP+i.shortId, cell:i=>`${IDP}${i.shortId}`, num:false},
+  {k:"title", t:"Title", get:i=>i.title, cell:i=>`<div class="ttl" title="${esc(i.title)}">${esc(i.title)}</div>`},
+  {k:"epic", t:"Epic", get:i=>i.parent?shortOf(i.parent):"~", cell:i=>i.parent?`<span class="eid">${shortOf(i.parent)}</span>`:`<span class="eid">—</span>`},
+  {k:"priority", t:"Priority", get:i=>PRIO_ORDER[prioKey(i.priority)], cell:i=>prioBadge(i.priority)},
+  {k:"status", t:"Status", get:i=>i.status, cell:i=>statusBadge(i.status)},
+  {k:"age", t:"Age d", get:i=>i._age??-1, cell:i=>i._age??"—", num:true},
+  {k:"stale", t:"Idle d", get:i=>i._stale??-1, cell:i=>`${i._stale??"—"}${i._isStale?' <span class="flag stale">stale</span>':""}`, num:true},
+  {k:"blocked", t:"Blocked", get:i=>i._unmet.length, cell:i=>i._unmet.length?`<span class="flag">✦ ${i._unmet.length}</span>`:"", num:true},
+  {k:"blocking", t:"Blocks", get:i=>i._blockingOpen, cell:i=>i._blockingOpen||"", num:true},
+];
+let sortK="priority", sortAsc=true;
+// no parent + no children default ON — the individual-issue review usually wants leaf issues (no epics, no umbrellas)
+const F = {q:"",prio:"",status:"",epic:"",blocked:false,stale:false,unprio:false,noParent:true,noChildren:true};
+
+// filter option lists
+const epicOpts = [...new Set(openIssues.filter(i=>i.parent).map(i=>i.parent))]
+  .map(id=>({id,label:shortOf(id)+" · "+((byId.get(id)?.title)||"").slice(0,40)}))
+  .sort((a,b)=>a.label.localeCompare(b.label));
+document.getElementById("fEpic").insertAdjacentHTML("beforeend",
+  epicOpts.map(o=>`<option value="${o.id}">${esc(o.label)}</option>`).join(""));
+document.getElementById("fPrio").insertAdjacentHTML("beforeend",
+  ["critical","high","medium","low","unset"].map(p=>`<option value="${p}">${PRIO_META[p].label}</option>`).join(""));
+document.getElementById("fStatus").insertAdjacentHTML("beforeend",
+  OPEN_ORDER.map(s=>`<option value="${s}">${STATUS_META[s].label}</option>`).join(""));
+
+function rows(){
+  let r = openIssues.filter(i=>{
+    if(F.q){const q=F.q.toLowerCase(); if(!(i.title.toLowerCase().includes(q)||(IDP.toLowerCase()+i.shortId).includes(q))) return false;}
+    if(F.prio && prioKey(i.priority)!==F.prio) return false;
+    if(F.status && i.status!==F.status) return false;
+    if(F.epic && i.parent!==F.epic) return false;
+    if(F.blocked && !i._blocked) return false;
+    if(F.stale && !i._isStale) return false;
+    if(F.unprio && !i._unprio) return false;
+    if(F.noParent && i.parent) return false;
+    if(F.noChildren && kids.has(i.id)) return false;
+    return true;
+  });
+  const col = COLS.find(c=>c.k===sortK);
+  r.sort((a,b)=>{const av=col.get(a),bv=col.get(b);
+    let c = (av<bv?-1:av>bv?1:0); if(c===0) c = PRIO_ORDER[prioKey(a.priority)]-PRIO_ORDER[prioKey(b.priority)];
+    return sortAsc?c:-c;});
+  return r;
+}
+function renderTable(){
+  const thead=document.querySelector("#tbl thead"), tbody=document.querySelector("#tbl tbody");
+  thead.innerHTML = "<tr>"+COLS.map(c=>`<th data-k="${c.k}" class="${c.num?'num':''} ${c.k===sortK?'sorted '+(sortAsc?'asc':''):''}">${c.t}</th>`).join("")+"</tr>";
+  const r=rows();
+  tbody.innerHTML = r.map(i=>`<tr class="${i._blocked?'blocked':''}" data-id="${IDP}${i.shortId}">`+
+    COLS.map(c=>`<td class="${c.num?'num':''} ${c.k==='title'?'tt':''}">${c.cell(i)}</td>`).join("")+"</tr>").join("");
+  document.getElementById("tCount").innerHTML = `<b>${r.length}</b> of ${openIssues.length} shown`;
+  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(k===sortK) sortAsc=!sortAsc; else {sortK=k; sortAsc=(k==="title"||k==="shortId");}
+    renderTable();});
+}
+document.getElementById("q").oninput=e=>{F.q=e.target.value;renderTable();};
+document.getElementById("fPrio").onchange=e=>{F.prio=e.target.value;renderTable();};
+document.getElementById("fStatus").onchange=e=>{F.status=e.target.value;renderTable();};
+document.getElementById("fEpic").onchange=e=>{F.epic=e.target.value;renderTable();};
+document.getElementById("fBlocked").onchange=e=>{F.blocked=e.target.checked;renderTable();};
+document.getElementById("fStale").onchange=e=>{F.stale=e.target.checked;renderTable();};
+document.getElementById("fUnprio").onchange=e=>{F.unprio=e.target.checked;renderTable();};
+document.getElementById("fNoParent").onchange=e=>{F.noParent=e.target.checked;renderTable();};
+document.getElementById("fNoChildren").onchange=e=>{F.noChildren=e.target.checked;renderTable();};
+renderTable();
+
+// ---- dependency signals ----
+const blockers = ISSUES.filter(i=>i._open && i._blockingOpen>0).sort((a,b)=>b._blockingOpen-a._blockingOpen).slice(0,12);
+document.getElementById("blocking").innerHTML = blockers.length ? blockers.map(i=>`
+  <li data-id="${IDP}${i.shortId}"><span class="n">${i._blockingOpen}</span><span>${prioBadge(i.priority)} <b>${IDP}${i.shortId}</b> ${esc(i.title)}</span></li>`).join("")
+  : `<li class="empty">Nothing is blocking open work.</li>`;
+const blocked = ISSUES.filter(i=>i._blocked).sort((a,b)=>PRIO_ORDER[prioKey(a.priority)]-PRIO_ORDER[prioKey(b.priority)]).slice(0,12);
+document.getElementById("blockedList").innerHTML = blocked.length ? blocked.map(i=>`
+  <li data-id="${IDP}${i.shortId}"><span class="n">${i._unmet.length}</span><span>${prioBadge(i.priority)} <b>${IDP}${i.shortId}</b> ${esc(i.title)}
+    <span class="eid">waits on ${i._unmet.map(d=>IDP+d.shortId).join(", ")}</span></span></li>`).join("")
+  : `<li class="empty">No open issue is blocked.</li>`;
+
+// ---- tabs ----
+document.getElementById("tabIssuesN").textContent = openIssues.length;
+document.getElementById("tabs").addEventListener("click", e=>{
+  const b = e.target.closest(".tab"); if(!b) return;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t===b));
+  document.querySelectorAll(".panel").forEach(p=>p.toggleAttribute("hidden", p.id!==b.dataset.panel));
+});
+document.getElementById("hideDone").addEventListener("change", e=>{
+  document.body.classList.toggle("hide-done", e.target.checked);
+});
+
+// ---- footer + theme ----
+document.getElementById("foot").textContent = `Generated from live fp state · ${new Date(NOW).toISOString()}`;
+const root=document.documentElement, tb=document.getElementById("themeBtn");
+tb.onclick=()=>{const cur=root.getAttribute("data-theme")|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  root.setAttribute("data-theme", cur==="dark"?"light":"dark");};
+
+// ---- right-click an issue row to copy its id ----
+let toastT=null;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"), 1400);
+}
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  // fallback if the Clipboard API is unavailable (non-secure context)
+  const ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  let ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+  ta.remove(); return ok?Promise.resolve():Promise.reject();
+}
+document.addEventListener("contextmenu", ev=>{
+  const el=ev.target.closest("[data-id]"); if(!el) return;   // native menu elsewhere
+  ev.preventDefault();
+  const id=el.getAttribute("data-id");
+  copyText(id).then(()=>toast(`Copied ${id}`), ()=>toast(`Couldn't copy — ${id}`));
+});
+</script>
+</body>
+</html>

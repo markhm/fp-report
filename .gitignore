@@ -1,0 +1,8 @@
+# Built export bundle
+/dist/
+
+# Generated reports / scratch
+*.html
+!fp-report.template.html
+
+**/.DS_Store

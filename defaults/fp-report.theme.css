@@ -1,0 +1,49 @@
+/* fp-report theme — colours + background for light and dark.
+   Injected verbatim into the report's <style> (see THEME_FILE in fp-report.conf).
+   A theme MUST define this token set for BOTH light (:root) and dark
+   (:root[data-theme="dark"] AND @media(prefers-color-scheme:dark)):
+     surfaces   --page --surface --surface-2
+     text       --ink --ink-2 --muted --head
+     structure  --grid --baseline --border --track
+     accent     --link
+     severity   --good --warning --serious --critical
+     status     --blue --aqua --teal --purple --mint
+     background  --motif
+   The JS status colour map (COLOR_VARS) references these by name, so keep the names;
+   change only the values. To rebrand: copy this file, edit the hex values. */
+
+  :root{
+    --page:#f4f5fa; --surface:#ffffff; --surface-2:#eef0f6;
+    --ink:#1b1e3d; --ink-2:#5a5d7e; --muted:#8a8db0; --head:#141437;
+    --grid:#e4e5ef; --baseline:#d3d5e4; --border:rgba(20,20,55,.10); --track:#e7e8f1;
+    --link:#8a6a0a;                                   /* ochre text accent */
+    --good:#1a9641; --warning:#b77f1a; --serious:#e2792a; --critical:#d7191c;
+    --blue:#b8901a; --aqua:#5b5fa6;
+    --teal:#0f9b8e; --purple:#6d4fc0; --mint:#12a06e;
+    --motif:radial-gradient(1100px 520px at 82% -12%, rgba(244,208,63,.10), transparent 60%),
+            radial-gradient(820px 460px at -6% 112%, rgba(26,150,65,.08), transparent 55%);
+  }
+  :root[data-theme="dark"], html[data-theme="dark"]{
+    --page:#141437; --surface:#1F1F4A; --surface-2:#252a55;
+    --ink:#e9eaf4; --ink-2:#a7a9c8; --muted:#8285a8; --head:#ffffff;
+    --grid:#2A2A5A; --baseline:#2A2A5A; --border:rgba(233,234,244,.12); --track:#2A2A5A;
+    --link:#F4D03F;                                   /* gold on navy */
+    --good:#3cbf5f; --warning:#e6b53f; --serious:#fb9a3a; --critical:#e2564f;
+    --blue:#F4D03F; --aqua:#8f93df;
+    --teal:#3fcabc; --purple:#a98fe0; --mint:#3fce9a;
+    --motif:radial-gradient(1200px 600px at 78% -10%, rgba(244,208,63,.10), transparent 60%),
+            radial-gradient(900px 500px at -5% 110%, rgba(26,150,65,.10), transparent 55%);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --page:#141437; --surface:#1F1F4A; --surface-2:#252a55;
+      --ink:#e9eaf4; --ink-2:#a7a9c8; --muted:#8285a8; --head:#ffffff;
+      --grid:#2A2A5A; --baseline:#2A2A5A; --border:rgba(233,234,244,.12); --track:#2A2A5A;
+      --link:#F4D03F;
+      --good:#3cbf5f; --warning:#e6b53f; --serious:#fb9a3a; --critical:#e2564f;
+      --blue:#F4D03F; --aqua:#8f93df;
+      --teal:#3fcabc; --purple:#a98fe0; --mint:#3fce9a;
+      --motif:radial-gradient(1200px 600px at 78% -10%, rgba(244,208,63,.10), transparent 60%),
+              radial-gradient(900px 500px at -5% 110%, rgba(26,150,65,.10), transparent 55%);
+    }
+  }

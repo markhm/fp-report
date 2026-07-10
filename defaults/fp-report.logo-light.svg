@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 60" width="232" height="60">
+  <g fill="#1b1e3d">
+    <rect x="6" y="34" width="11" height="18" rx="2.5"/>
+    <rect x="23" y="23" width="11" height="29" rx="2.5"/>
+    <rect x="40" y="12" width="11" height="40" rx="2.5"/>
+  </g>
+  <text x="64" y="41" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="27" font-weight="700" letter-spacing="-0.5" fill="#1b1e3d">roadmap</text>
+</svg>

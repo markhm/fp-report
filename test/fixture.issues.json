@@ -1,0 +1,11 @@
+{
+  "issues": [
+    { "id": "e1", "shortId": "epic0001", "title": "Smoke fixture epic",       "description": "Umbrella for the smoke test.", "status": "todo",        "priority": "high",     "parent": null, "dependencies": [], "createdAt": "2026-05-01T10:00:00Z", "updatedAt": "2026-07-01T10:00:00Z" },
+    { "id": "c1", "shortId": "child001", "title": "Implement the widget",      "description": "In progress work item.",     "status": "in-progress", "priority": "high",     "parent": "e1", "dependencies": [], "createdAt": "2026-05-03T10:00:00Z", "updatedAt": "2026-07-08T10:00:00Z" },
+    { "id": "c2", "shortId": "child002", "title": "Write the docs",            "description": "Completed work item.",       "status": "done",        "priority": "medium",   "parent": "e1", "dependencies": [], "createdAt": "2026-05-04T10:00:00Z", "updatedAt": "2026-06-20T10:00:00Z" },
+    { "id": "c3", "shortId": "child003", "title": "Ship it (blocked on c1)",   "description": "Blocked by an unmet dep.",   "status": "todo",        "priority": "critical", "parent": "e1", "dependencies": ["c1"], "createdAt": "2026-05-05T10:00:00Z", "updatedAt": "2026-05-20T10:00:00Z" },
+    { "id": "s1", "shortId": "stand001", "title": "A selected standalone task", "description": "Selected, no parent.",      "status": "selected",    "priority": "low",      "parent": null, "dependencies": [], "createdAt": "2026-06-01T10:00:00Z", "updatedAt": "2026-07-05T10:00:00Z" },
+    { "id": "d1", "shortId": "defr0001", "title": "A deferred idea",           "description": "Neither open nor satisfied.", "status": "deferred",   "priority": "medium",   "parent": null, "dependencies": [], "createdAt": "2026-04-01T10:00:00Z", "updatedAt": "2026-04-15T10:00:00Z" },
+    { "id": "r1", "shortId": "rejd0001", "title": "A rejected proposal",       "description": "Terminal, won't do.",        "status": "rejected",    "priority": "low",      "parent": null, "dependencies": [], "createdAt": "2026-04-02T10:00:00Z", "updatedAt": "2026-04-10T10:00:00Z" }
+  ]
+}

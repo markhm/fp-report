@@ -1,0 +1,42 @@
+/* fp-report theme — "Graphite": brand-neutral warm-neutral light / true-dark, blue accent.
+   An alternate to the default navy/gold look — ships in the export so adopters have a
+   second ready-made palette. Same --token contract as fp-report.theme.css (see its header).
+   Point THEME_FILE at this file (or copy + retint). Status hues sit in the CVD floor band by
+   necessity (8+ distinct states); the report always pairs them with a text label, which is
+   the required secondary channel — colour never carries status meaning alone. */
+
+  :root{
+    --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f1f0ea;
+    --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781; --head:#111110;
+    --grid:#e4e3dc; --baseline:#c3c2b7; --border:rgba(11,11,11,.10); --track:#eceae2;
+    --link:#1c5cab;                                   /* blue accent text */
+    --good:#0ca30c; --warning:#c9860f; --serious:#e0672e; --critical:#cf3a3a;
+    --blue:#2a78d6; --aqua:#4a3aa7;
+    --teal:#0d96a8; --purple:#a24bb5; --mint:#4f9a2f;
+    --motif:radial-gradient(1100px 520px at 82% -12%, rgba(42,120,214,.06), transparent 60%),
+            radial-gradient(820px 460px at -6% 112%, rgba(137,135,129,.05), transparent 55%);
+  }
+  :root[data-theme="dark"], html[data-theme="dark"]{
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232320;
+    --ink:#f4f3ee; --ink-2:#c3c2b7; --muted:#8f8d86; --head:#ffffff;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10); --track:#262622;
+    --link:#6da7ec;                                   /* blue accent on near-black */
+    --good:#17b31a; --warning:#fab219; --serious:#ec835a; --critical:#e05a5a;
+    --blue:#3987e5; --aqua:#9085e9;
+    --teal:#28a7b6; --purple:#b06ec2; --mint:#57a636;
+    --motif:radial-gradient(1200px 600px at 78% -10%, rgba(57,135,229,.08), transparent 60%),
+            radial-gradient(900px 500px at -5% 110%, rgba(137,135,129,.06), transparent 55%);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232320;
+      --ink:#f4f3ee; --ink-2:#c3c2b7; --muted:#8f8d86; --head:#ffffff;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10); --track:#262622;
+      --link:#6da7ec;
+      --good:#17b31a; --warning:#fab219; --serious:#ec835a; --critical:#e05a5a;
+      --blue:#3987e5; --aqua:#9085e9;
+      --teal:#28a7b6; --purple:#b06ec2; --mint:#57a636;
+      --motif:radial-gradient(1200px 600px at 78% -10%, rgba(57,135,229,.08), transparent 60%),
+              radial-gradient(900px 500px at -5% 110%, rgba(137,135,129,.06), transparent 55%);
+    }
+  }
