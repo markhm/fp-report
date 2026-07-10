@@ -102,6 +102,16 @@ t "--init makes the symlink"               test -L "$IDIR/scripts/fp-report"
 ( cd "$IDIR" && "$ENGINE" --init >/dev/null 2>&1 )
 t "--init is idempotent (conf unchanged)"  grep -q 'FP_PREFIX="DEMO"' "$IDIR/scripts/fp-report.conf"
 
+# ---- unit tests: source the engine (main is guarded) and call the pure helpers ----
+u(){ if [ "$2" = "$3" ]; then ok "$1"; else no "$1 (got '$2' want '$3')"; fi; }
+# shellcheck source=/dev/null
+. "$ENGINE"
+u "resolve_under: absolute path passes through" "$(resolve_under /a/b /base)"  "/a/b"
+u "resolve_under: relative joins the base"      "$(resolve_under rel/x /base)" "/base/rel/x"
+mkdir -p "$TMP/pj/scripts" "$TMP/pj/sub"; : > "$TMP/pj/scripts/fp-report.conf"
+u "find_conf: walks up to scripts/fp-report.conf" "$(cd "$TMP/pj/sub" && find_conf || true)" "$TMP/pj/scripts/fp-report.conf"
+if ( cd "$TMP" && find_conf >/dev/null 2>&1 ); then no "find_conf: no match returns non-zero"; else ok "find_conf: no match returns non-zero"; fi
+
 echo
 printf 'passed %d, failed %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -19,9 +19,11 @@
 # Everything a conf references (status file, logos, output dir) is resolved relative
 # to the conf's own directory, so the report lands in the right project.
 
-set -euo pipefail
+# Strict mode only when executed — so the test suite can `source` this file to
+# unit-test the pure helpers without inheriting errexit or running main.
+[ "${BASH_SOURCE[0]}" = "${0}" ] && set -euo pipefail
 
-# ---- locate this tool's own dir (follow symlinks; the PATH entry is a symlink) ----
+# ---- locate this tool's own dir (file scope: must see the invoking symlink chain) ----
 # INVOKE_DIRS collects the dir of every symlink hop, so a project-local symlink
 # (<project>/scripts/fp-report) lets us find that project's conf from any cwd.
 SOURCE="${BASH_SOURCE[0]}"
@@ -37,36 +39,36 @@ TOOL_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 TEMPLATE="$TOOL_DIR/fp-report.template.html"
 DEFAULTS_DIR="$TOOL_DIR/defaults"
 
+# ---- pure helpers (safe to source and unit-test) ----
+
 # absolute if already absolute, else joined onto $2
 resolve_under() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$2" "$1" ;; esac; }
 
-# ---- args ----
-DO_OPEN=true
-CONF_ARG=""
-OUT_OVERRIDE=""
-ISSUES_FILE=""
-INIT=false
-THEME_ARG=""
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --no-open)     DO_OPEN=false ;;
-        --open)        DO_OPEN=true ;;          # default; kept for back-compat
-        --init)        INIT=true ;;
-        --theme)       shift; THEME_ARG="$1" ;;
-        -c|--config)   shift; CONF_ARG="$1" ;;
-        -o|--out)      shift; OUT_OVERRIDE="$1" ;;
-        --issues-file) shift; ISSUES_FILE="$1" ;;   # render this JSON instead of calling fp (offline/CI)
-        -h|--help)     sed -n '2,20p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "Unknown arg: $1" >&2; exit 2 ;;
-    esac
-    shift
-done
+# a conf next to an invoking symlink — lets <project>/scripts/fp-report work from any cwd
+find_beside_symlink() {
+    local d
+    for d in ${INVOKE_DIRS[@]+"${INVOKE_DIRS[@]}"}; do
+        [ -f "$d/fp-report.conf" ]         && { printf '%s' "$d/fp-report.conf"; return 0; }
+        [ -f "$d/scripts/fp-report.conf" ] && { printf '%s' "$d/scripts/fp-report.conf"; return 0; }
+    done
+    return 1
+}
+# a conf found by walking up from the current dir
+find_conf() {
+    local dir="$PWD"
+    while [ "$dir" != "/" ]; do
+        [ -f "$dir/scripts/fp-report.conf" ] && { printf '%s' "$dir/scripts/fp-report.conf"; return 0; }
+        [ -f "$dir/fp-report.conf" ]         && { printf '%s' "$dir/fp-report.conf"; return 0; }
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
 
-# ---- 'fp-report --init' : scaffold the current project, then exit ----
-if [ "$INIT" = true ]; then
-    scripts_dir="$PWD/scripts"
+# ---- 'fp-report --init' : scaffold scripts/ in the current project (reads $THEME_ARG) ----
+cmd_init() {
+    local scripts_dir="$PWD/scripts" conf prefix pname theme_src theme_name
     conf="$scripts_dir/fp-report.conf"
-    if [ -e "$conf" ]; then echo "Already initialised: $conf (leaving it untouched)" >&2; exit 0; fi
+    if [ -e "$conf" ]; then echo "Already initialised: $conf (leaving it untouched)" >&2; return 0; fi
     mkdir -p "$scripts_dir"
     # prefix: from .fp/config.toml, else from fp's displayed IDs, else FP.
     # (|| true guards keep pipefail/set -e from aborting when a grep finds nothing.)
@@ -103,96 +105,98 @@ EOF
     else ln -sf "$SELF" "$scripts_dir/fp-report"; fi
     echo "✓ Initialised fp-report in $scripts_dir  (prefix $prefix, theme $theme_name)"
     echo "  review scripts/fp-report.conf, then run:  fp-report"
-    exit 0
-fi
-
-# ---- locate the project config ----
-# a conf next to an invoking symlink — lets <project>/scripts/fp-report work from any cwd
-find_beside_symlink() {
-    local d
-    for d in ${INVOKE_DIRS[@]+"${INVOKE_DIRS[@]}"}; do
-        [ -f "$d/fp-report.conf" ]         && { printf '%s' "$d/fp-report.conf"; return 0; }
-        [ -f "$d/scripts/fp-report.conf" ] && { printf '%s' "$d/scripts/fp-report.conf"; return 0; }
-    done
-    return 1
+    return 0
 }
-# a conf found by walking up from the current dir
-find_conf() {
-    local dir="$PWD"
-    while [ "$dir" != "/" ]; do
-        [ -f "$dir/scripts/fp-report.conf" ] && { printf '%s' "$dir/scripts/fp-report.conf"; return 0; }
-        [ -f "$dir/fp-report.conf" ]         && { printf '%s' "$dir/fp-report.conf"; return 0; }
-        dir="$(dirname "$dir")"
+
+# ---- render pipeline ----
+main() {
+    # ---- args ----
+    DO_OPEN=true; CONF_ARG=""; OUT_OVERRIDE=""; ISSUES_FILE=""; INIT=false; THEME_ARG=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --no-open)     DO_OPEN=false ;;
+            --open)        DO_OPEN=true ;;          # default; kept for back-compat
+            --init)        INIT=true ;;
+            --theme)       shift; THEME_ARG="$1" ;;
+            -c|--config)   shift; CONF_ARG="$1" ;;
+            -o|--out)      shift; OUT_OVERRIDE="$1" ;;
+            --issues-file) shift; ISSUES_FILE="$1" ;;   # render this JSON instead of calling fp (offline/CI)
+            -h|--help)     sed -n '2,20p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            *) echo "Unknown arg: $1" >&2; exit 2 ;;
+        esac
+        shift
     done
-    return 1
-}
-if   [ -n "$CONF_ARG" ];              then CONF="$CONF_ARG"
-elif [ -n "${FP_REPORT_CONF:-}" ];    then CONF="$FP_REPORT_CONF"
-elif CONF="$(find_beside_symlink)";   then :
-elif CONF="$(find_conf)";             then :
-else CONF="$DEFAULTS_DIR/fp-report.conf"; fi
-[ -f "$CONF" ] || { echo "Error: config not found: $CONF" >&2; exit 1; }
-CONF_DIR="$(cd -P "$(dirname "$CONF")" && pwd)"
 
-# ---- settings (defaults; the conf overrides) ----
-FP_PREFIX="FP"
-PROJECT_NAME="project"
-APP_NAME=""                                    # application name in the browser <title>; empty → PROJECT_NAME
-REPORT_TITLE="Roadmap & prioritisation"
-STATUS_FILE="fp-report.status.json"
-THEME_FILE="fp-report.theme.css"
-LOGO_LIGHT="fp-report.logo-light.svg"
-LOGO_DARK="fp-report.logo-dark.svg"
-OUTPUT_FILE="fp-report.html"
-OUTPUT_DIR=""                                  # empty → CONF_DIR/../reports
-ASSETS_DIR=""                                  # empty → OUTPUT_DIR (logos live with the report)
-# shellcheck source=/dev/null
-. "$CONF"
-[ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
+    if [ "$INIT" = true ]; then cmd_init; exit 0; fi
 
-# ---- resolve paths against the conf's directory (so output lands in that project) ----
-[ -n "$OUTPUT_DIR" ] || OUTPUT_DIR="$CONF_DIR/../reports"
-OUTPUT_DIR="$(resolve_under "$OUTPUT_DIR" "$CONF_DIR")"
-[ -n "$ASSETS_DIR" ] || ASSETS_DIR="$OUTPUT_DIR"
-ASSETS_DIR="$(resolve_under "$ASSETS_DIR" "$CONF_DIR")"
+    # ---- locate the project config ----
+    if   [ -n "$CONF_ARG" ];              then CONF="$CONF_ARG"
+    elif [ -n "${FP_REPORT_CONF:-}" ];    then CONF="$FP_REPORT_CONF"
+    elif CONF="$(find_beside_symlink)";   then :
+    elif CONF="$(find_conf)";             then :
+    else CONF="$DEFAULTS_DIR/fp-report.conf"; fi
+    [ -f "$CONF" ] || { echo "Error: config not found: $CONF" >&2; exit 1; }
+    CONF_DIR="$(cd -P "$(dirname "$CONF")" && pwd)"
 
-STATUS_PATH="$(resolve_under "$STATUS_FILE" "$CONF_DIR")"
-[ -f "$STATUS_PATH" ] || STATUS_PATH="$DEFAULTS_DIR/fp-report.status.json"   # fall back to defaults
-THEME_PATH="$(resolve_under "$THEME_FILE" "$CONF_DIR")"
-[ -f "$THEME_PATH" ] || THEME_PATH="$DEFAULTS_DIR/fp-report.theme.css"       # fall back to defaults
-LOGO_LIGHT_PATH="$(resolve_under "$LOGO_LIGHT" "$ASSETS_DIR")"
-[ -f "$LOGO_LIGHT_PATH" ] || LOGO_LIGHT_PATH="$DEFAULTS_DIR/fp-report.logo-light.svg"
-LOGO_DARK_PATH="$(resolve_under "$LOGO_DARK" "$ASSETS_DIR")"
-[ -f "$LOGO_DARK_PATH" ] || LOGO_DARK_PATH="$DEFAULTS_DIR/fp-report.logo-dark.svg"
+    # ---- settings (defaults; the conf overrides) ----
+    FP_PREFIX="FP"
+    PROJECT_NAME="project"
+    APP_NAME=""                                    # application name in the browser <title>; empty → PROJECT_NAME
+    REPORT_TITLE="Roadmap & prioritisation"
+    STATUS_FILE="fp-report.status.json"
+    THEME_FILE="fp-report.theme.css"
+    LOGO_LIGHT="fp-report.logo-light.svg"
+    LOGO_DARK="fp-report.logo-dark.svg"
+    OUTPUT_FILE="fp-report.html"
+    OUTPUT_DIR=""                                  # empty → CONF_DIR/../reports
+    ASSETS_DIR=""                                  # empty → OUTPUT_DIR (logos live with the report)
+    # shellcheck source=/dev/null
+    . "$CONF"
+    [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
 
-OUT="${OUT_OVERRIDE:-$OUTPUT_DIR/$OUTPUT_FILE}"
+    # ---- resolve paths against the conf's directory (so output lands in that project) ----
+    [ -n "$OUTPUT_DIR" ] || OUTPUT_DIR="$CONF_DIR/../reports"
+    OUTPUT_DIR="$(resolve_under "$OUTPUT_DIR" "$CONF_DIR")"
+    [ -n "$ASSETS_DIR" ] || ASSETS_DIR="$OUTPUT_DIR"
+    ASSETS_DIR="$(resolve_under "$ASSETS_DIR" "$CONF_DIR")"
 
-[ -n "$ISSUES_FILE" ] || command -v fp >/dev/null 2>&1 || { echo "Error: fp CLI not found on PATH" >&2; exit 1; }
-[ -f "$TEMPLATE" ]    || { echo "Error: template missing: $TEMPLATE" >&2; exit 1; }
-[ -f "$STATUS_PATH" ] || { echo "Error: status registry missing: $STATUS_PATH" >&2; exit 1; }
-[ -f "$THEME_PATH" ]  || { echo "Error: theme missing: $THEME_PATH" >&2; exit 1; }
+    STATUS_PATH="$(resolve_under "$STATUS_FILE" "$CONF_DIR")"
+    [ -f "$STATUS_PATH" ] || STATUS_PATH="$DEFAULTS_DIR/fp-report.status.json"   # fall back to defaults
+    THEME_PATH="$(resolve_under "$THEME_FILE" "$CONF_DIR")"
+    [ -f "$THEME_PATH" ] || THEME_PATH="$DEFAULTS_DIR/fp-report.theme.css"       # fall back to defaults
+    LOGO_LIGHT_PATH="$(resolve_under "$LOGO_LIGHT" "$ASSETS_DIR")"
+    [ -f "$LOGO_LIGHT_PATH" ] || LOGO_LIGHT_PATH="$DEFAULTS_DIR/fp-report.logo-light.svg"
+    LOGO_DARK_PATH="$(resolve_under "$LOGO_DARK" "$ASSETS_DIR")"
+    [ -f "$LOGO_DARK_PATH" ] || LOGO_DARK_PATH="$DEFAULTS_DIR/fp-report.logo-dark.svg"
 
-mkdir -p "$(dirname "$OUT")"
+    OUT="${OUT_OVERRIDE:-$OUTPUT_DIR/$OUTPUT_FILE}"
 
-# Pull the full backlog as JSON. Run fp from the conf's dir so it walks up to the
-# project's .fp/ (each project's config anchors us in the right repo).
-TMP_JSON="$(mktemp)"
-trap 'rm -f "$TMP_JSON"' EXIT
-if [ -n "$ISSUES_FILE" ]; then
-    cp "$ISSUES_FILE" "$TMP_JSON"                                   # offline/CI: skip fp
-else
-    ( cd "$CONF_DIR" && fp issue list --limit 5000 --format json ) > "$TMP_JSON"
-fi
+    [ -n "$ISSUES_FILE" ] || command -v fp >/dev/null 2>&1 || { echo "Error: fp CLI not found on PATH" >&2; exit 1; }
+    [ -f "$TEMPLATE" ]    || { echo "Error: template missing: $TEMPLATE" >&2; exit 1; }
+    [ -f "$STATUS_PATH" ] || { echo "Error: status registry missing: $STATUS_PATH" >&2; exit 1; }
+    [ -f "$THEME_PATH" ]  || { echo "Error: theme missing: $THEME_PATH" >&2; exit 1; }
 
-GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    mkdir -p "$(dirname "$OUT")"
 
-# Inject data + settings + logos into the template. Python for robust replacement and
-# to neutralise any '</script>' inside descriptions (escape '<' → <; still valid
-# JSON since every '<' sits inside a string).
-TEMPLATE="$TEMPLATE" OUT="$OUT" JSON="$TMP_JSON" GENERATED_AT="$GENERATED_AT" \
-FP_PREFIX="$FP_PREFIX" PROJECT_NAME="$PROJECT_NAME" APP_NAME="$APP_NAME" REPORT_TITLE="$REPORT_TITLE" \
-LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
-THEME_PATH="$THEME_PATH" python3 - <<'PY'
+    # Pull the full backlog as JSON. Run fp from the conf's dir so it walks up to the
+    # project's .fp/ (each project's config anchors us in the right repo).
+    TMP_JSON="$(mktemp)"
+    trap 'rm -f "$TMP_JSON"' EXIT
+    if [ -n "$ISSUES_FILE" ]; then
+        cp "$ISSUES_FILE" "$TMP_JSON"                                   # offline/CI: skip fp
+    else
+        ( cd "$CONF_DIR" && fp issue list --limit 5000 --format json ) > "$TMP_JSON"
+    fi
+
+    GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    # Inject data + settings + logos into the template. Python for robust replacement and
+    # to neutralise any '</script>' inside descriptions (escape '<' → <; still valid
+    # JSON since every '<' sits inside a string).
+    TEMPLATE="$TEMPLATE" OUT="$OUT" JSON="$TMP_JSON" GENERATED_AT="$GENERATED_AT" \
+    FP_PREFIX="$FP_PREFIX" PROJECT_NAME="$PROJECT_NAME" APP_NAME="$APP_NAME" REPORT_TITLE="$REPORT_TITLE" \
+    LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
+    THEME_PATH="$THEME_PATH" python3 - <<'PY'
 import os, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -216,9 +220,13 @@ html = (tpl.replace("__FP_DATA__", data)
 open(os.environ["OUT"], "w", encoding="utf-8").write(html)
 PY
 
-COUNT="$(TMP_JSON="$TMP_JSON" python3 -c 'import json,os;print(len(json.load(open(os.environ["TMP_JSON"])).get("issues",[])))')"
-echo "✓ Wrote $OUT ($(wc -c <"$OUT" | tr -d ' ') bytes, $COUNT issues) — $PROJECT_NAME [$FP_PREFIX]"
+    COUNT="$(TMP_JSON="$TMP_JSON" python3 -c 'import json,os;print(len(json.load(open(os.environ["TMP_JSON"])).get("issues",[])))')"
+    echo "✓ Wrote $OUT ($(wc -c <"$OUT" | tr -d ' ') bytes, $COUNT issues) — $PROJECT_NAME [$FP_PREFIX]"
 
-if [ "$DO_OPEN" = true ]; then
-    if command -v open >/dev/null 2>&1; then open "$OUT"; else echo "(cannot open: 'open' not available; pass --no-open to silence)"; fi
-fi
+    if [ "$DO_OPEN" = true ]; then
+        if command -v open >/dev/null 2>&1; then open "$OUT"; else echo "(cannot open: 'open' not available; pass --no-open to silence)"; fi
+    fi
+}
+
+# Run only when executed, not when sourced (tests source us for the helpers above).
+[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"
