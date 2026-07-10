@@ -11,8 +11,8 @@ DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINDIR="${1:-$HOME/bin}"
 
 mkdir -p "$BINDIR"
-ln -sf "$DIR/_fp-report.sh" "$BINDIR/fp-report"
-echo "✓ linked $BINDIR/fp-report -> $DIR/_fp-report.sh"
+ln -sf "$DIR/fp-report.sh" "$BINDIR/fp-report"
+echo "✓ linked $BINDIR/fp-report -> $DIR/fp-report.sh"
 
 command -v fp       >/dev/null 2>&1 || echo "  note: 'fp' CLI not found on PATH — fp-report needs it to read issues."
 command -v python3  >/dev/null 2>&1 || echo "  note: 'python3' not found — required."

@@ -13,7 +13,7 @@ dependency signals. No external requests — safe to open anywhere or share.
 ```sh
 git clone https://github.com/markhm/fp-report.git
 cd fp-report
-./install.sh            # symlinks ~/bin/fp-report -> ./_fp-report.sh
+./install.sh            # symlinks ~/bin/fp-report -> ./fp-report.sh
 ```
 
 `~/bin` needs to be on your `$PATH`. Requires `fp` and `python3`.
@@ -78,8 +78,10 @@ contract. The JS status colour map references the tokens by name, so keep the na
 
 ## Development
 
-`bash test/smoke.sh` renders the fixture (`--issues-file`, no fp needed) and asserts
-the output is well-formed; CI runs it on every push (`.github/workflows/smoke.yml`).
+`bash test/run.sh` runs the test suite — it renders fixtures through the engine
+(`--issues-file`, no live fp needed) and asserts on the output: placeholder
+replacement, prefix/title/theme/status injection, the open/blocked model, injection
+safety, and `--init` scaffolding. CI runs it on every push (`.github/workflows/tests.yml`).
 
 ## License
 

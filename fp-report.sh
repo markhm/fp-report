@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# _fp-report.sh — generate a self-contained HTML roadmap/prioritisation report
+# fp-report.sh — generate a self-contained HTML roadmap/prioritisation report
 # from live fp state. Read-only (never mutates fp). One shared engine, many projects.
 #
 #   fp-report                  # generate for the project you're in + open it

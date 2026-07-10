@@ -31,9 +31,9 @@ mkdir -p "$STAGE/defaults"
 
 # The portable tool — engine, template, README + all defaults. (export.sh itself is
 # left out: a recipient runs the tool, they don't re-export.)
-cp "$DIR/_fp-report.sh" "$DIR/fp-report.template.html" "$DIR/README.md" "$STAGE/"
+cp "$DIR/fp-report.sh" "$DIR/fp-report.template.html" "$DIR/README.md" "$STAGE/"
 cp "$DIR"/defaults/* "$STAGE/defaults/"
-chmod +x "$STAGE/_fp-report.sh"
+chmod +x "$STAGE/fp-report.sh"
 
 mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT"

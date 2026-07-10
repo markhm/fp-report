@@ -1,15 +1,15 @@
-name: smoke
+name: tests
 on:
   push:
   pull_request:
 
 jobs:
-  smoke:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Render fixture and assert
-        run: bash test/smoke.sh
+      - name: Run test suite
+        run: bash test/run.sh
