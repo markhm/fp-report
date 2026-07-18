@@ -134,6 +134,76 @@ __THEME_CSS__
     font-variant-numeric:tabular-nums}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   footer{margin-top:30px;color:var(--muted);font-size:11.5px;text-align:center}
+
+  /* ---- global search (all issues: id · title · spec) ---- */
+  .search{margin:16px 0 6px}
+  .search-box{position:relative;display:flex;align-items:center}
+  .search-box::before{content:"⌕";position:absolute;left:14px;font-size:19px;color:var(--muted);pointer-events:none}
+  #gq{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--ink);
+    border-radius:10px;padding:12px 42px;font-size:15px;font-family:inherit}
+  #gq::placeholder{color:var(--muted)}
+  #gq:focus{outline:none;border-color:var(--link);box-shadow:0 0 0 3px var(--track)}
+  .search-clear{position:absolute;right:8px;background:var(--surface-2);border:1px solid var(--border);
+    color:var(--ink-2);border-radius:8px;width:30px;height:30px;font-size:17px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .search-hint{display:none}
+  .search-meta{color:var(--muted);font-size:12px;margin:9px 2px 0}
+  .search-results{display:grid;gap:10px;margin-top:10px}
+  .hit{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer}
+  .hit-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .hit-id{font-weight:680;color:var(--link);font-variant-numeric:tabular-nums}
+  .hit-title{font-weight:600;color:var(--head);font-size:14px;line-height:1.35;margin-top:6px}
+  .hit-desc{margin-top:8px;color:var(--ink-2);font-size:12.8px;line-height:1.5;white-space:pre-wrap;
+    overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+  .hit.open .hit-desc{-webkit-line-clamp:unset;display:block}
+  .hit mark{background:var(--warning);color:#1a1200;padding:0 2px;border-radius:3px}
+  .hit-empty{padding:14px;color:var(--muted)}
+  .cid{cursor:pointer}
+  @media (hover:hover){.cid:hover{text-decoration:underline}}
+  body.searching #dashboard{display:none}
+
+  /* ---- mobile (iPhone Pro ~390–430px) ---- */
+  @media (max-width:480px){
+    .wrap{padding:14px 12px 60px}
+    header.top{gap:10px}
+    .brand{gap:11px}
+    .brand-logo{height:40px}
+    h1{font-size:17px}
+    .appname{font-size:11px}
+    .search{position:sticky;top:0;z-index:6;background:var(--page);padding:8px 0;margin:8px 0 4px}
+    .search-hint{display:block;color:var(--muted);font-size:11.5px;margin:7px 2px 0}
+    .kpis{grid-template-columns:1fr 1fr}
+    .kpi .v{font-size:23px}
+    /* epic roadmap rows → stacked */
+    .epic{grid-template-columns:1fr;gap:8px}
+    .epic .er{justify-content:flex-start}
+    /* epic child rows → id+idle / title / badges */
+    .echild{grid-template-columns:auto 1fr auto;row-gap:5px;column-gap:8px;padding:10px 12px 10px 16px;font-size:12.5px}
+    .echild .eeid{grid-column:1;grid-row:1}
+    .echild .eet{grid-column:1 / -1;grid-row:2;white-space:normal;overflow:visible;text-overflow:clip}
+    .echild > .badge:nth-child(3){grid-column:1;grid-row:3;justify-self:start}
+    .echild > .badge:nth-child(4){grid-column:2;grid-row:3;justify-self:start}
+    .echild .eeidle{grid-column:3;grid-row:1;text-align:right}
+    /* prioritisation table → stacked cards */
+    section.card.twrap{background:transparent;border:0;border-radius:0}
+    .twrap{overflow:visible}
+    #tbl thead{display:none}
+    #tbl,#tbl tbody{display:block;width:100%}
+    #tbl tr{display:block;background:var(--surface);border:1px solid var(--border);
+      border-radius:12px;margin-bottom:10px;padding:10px 12px}
+    #tbl td{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+      border:0;padding:3px 0;text-align:left}
+    #tbl td::before{content:attr(data-label);color:var(--muted);font-size:10.5px;font-weight:600;
+      text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
+    #tbl td.num{text-align:left}
+    #tbl td.tt{display:block;padding-bottom:7px;margin-bottom:5px;border-bottom:1px solid var(--border)}
+    #tbl td.tt::before{display:none}
+    #tbl td.tt .ttl{white-space:normal;max-width:none;font-weight:650;font-size:13.5px}
+    #tbl td:empty{display:none}
+    /* filters: give the in-panel search room, wrap comfortably */
+    .filters input[type=search]{min-width:0;flex:1 1 100%}
+    .filters #fEpic{max-width:none;flex:1 1 100%}
+  }
 </style>
 </head>
 <body>
@@ -151,6 +221,18 @@ __THEME_CSS__
     <button class="theme-btn" id="themeBtn" type="button">◐ theme</button>
   </header>
 
+  <section class="search" id="search">
+    <div class="search-box">
+      <input type="search" id="gq" placeholder="Search all issues — title, ID, or spec…"
+             autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search all issues">
+      <button class="search-clear" id="gqClear" type="button" hidden aria-label="Clear search">×</button>
+    </div>
+    <div class="search-hint">Tap a result to open its spec · tap the ID to copy</div>
+    <div class="search-meta" id="gqMeta" hidden></div>
+    <div class="search-results" id="gqResults" hidden></div>
+  </section>
+
+  <main id="dashboard">
   <h2>Signals</h2>
   <section class="kpis card" id="kpis" style="border:0;background:transparent;padding:0"></section>
 
@@ -195,6 +277,7 @@ __THEME_CSS__
     <div class="card"><div class="distbody" style="font-weight:600">Blocked — open issues waiting on unmet deps</div><ol class="deps" id="blockedList"></ol></div>
   </section>
   </div><!-- /panel-issues -->
+  </main>
 
   <footer id="foot"></footer>
 </div>
@@ -412,7 +495,7 @@ function renderTable(){
   thead.innerHTML = "<tr>"+COLS.map(c=>`<th data-k="${c.k}" class="${c.num?'num':''} ${c.k===sortK?'sorted '+(sortAsc?'asc':''):''}">${c.t}</th>`).join("")+"</tr>";
   const r=rows();
   tbody.innerHTML = r.map(i=>`<tr class="${i._blocked?'blocked':''}" data-id="${IDP}${i.shortId}">`+
-    COLS.map(c=>`<td class="${c.num?'num':''} ${c.k==='title'?'tt':''}">${c.cell(i)}</td>`).join("")+"</tr>").join("");
+    COLS.map(c=>`<td class="${c.num?'num':''} ${c.k==='title'?'tt':''}" data-label="${c.t}">${c.cell(i)}</td>`).join("")+"</tr>").join("");
   document.getElementById("tCount").innerHTML = `<b>${r.length}</b> of ${openIssues.length} shown`;
   thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{
     const k=th.dataset.k; if(k===sortK) sortAsc=!sortAsc; else {sortK=k; sortAsc=(k==="title"||k==="shortId");}
@@ -478,6 +561,75 @@ document.addEventListener("contextmenu", ev=>{
   ev.preventDefault();
   const id=el.getAttribute("data-id");
   copyText(id).then(()=>toast(`Copied ${id}`), ()=>toast(`Couldn't copy — ${id}`));
+});
+function copyId(el){
+  const holder=el.closest("[data-id]")||el;
+  const id=holder.getAttribute("data-id")||el.textContent.trim();
+  copyText(id).then(()=>toast(`Copied ${id}`), ()=>toast(`Couldn't copy — ${id}`));
+}
+
+// ---- global search: every issue, matched on id / title / spec (description) ----
+// Space-separated terms are ANDed; id hits rank above title hits above spec hits.
+// Serves the on-the-go use case: find a specced task fast, tap to read its spec.
+const gq=document.getElementById("gq"), gqResults=document.getElementById("gqResults"),
+      gqMeta=document.getElementById("gqMeta"), gqClear=document.getElementById("gqClear");
+const SEARCH_LIMIT=60;
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function mark(text, terms){                      // highlight terms in already-escaped text
+  let out=esc(text);
+  for(const t of terms){ if(!t) continue;
+    out=out.replace(new RegExp("("+reEsc(t)+")","ig"), "<mark>$1</mark>"); }
+  return out;
+}
+function runSearch(){
+  const raw=gq.value.trim();
+  const terms=raw.toLowerCase().split(/\s+/).filter(Boolean);
+  gqClear.hidden = raw==="";
+  document.body.classList.toggle("searching", terms.length>0);
+  if(!terms.length){ gqResults.hidden=gqMeta.hidden=true; gqResults.innerHTML=""; return; }
+  const hits=[];
+  for(const i of ISSUES){
+    const id=(IDP+i.shortId).toLowerCase(), title=(i.title||"").toLowerCase(), desc=(i.description||"").toLowerCase();
+    let ok=true, score=0;
+    for(const t of terms){
+      const a=id.includes(t), b=title.includes(t), c=desc.includes(t);
+      if(!(a||b||c)){ ok=false; break; }
+      score += (a?6:0)+(b?4:0)+(c?1:0)+(title.startsWith(t)?2:0);
+    }
+    if(ok) hits.push({i, score: score+(i._open?2:0)});
+  }
+  hits.sort((x,y)=> y.score-x.score
+    || (PRIO_ORDER[prioKey(x.i.priority)]-PRIO_ORDER[prioKey(y.i.priority)]));
+  const total=hits.length, shown=hits.slice(0,SEARCH_LIMIT);
+  gqMeta.hidden=false;
+  gqMeta.textContent=`${total} match${total===1?"":"es"}`+(total>SEARCH_LIMIT?` · showing first ${SEARCH_LIMIT}`:"");
+  gqResults.hidden=false;
+  gqResults.innerHTML = total ? shown.map(({i})=>{
+    const d=(i.description||"").trim();
+    const hasDesc = d && !/^\/\S+\.(md|txt|json)$/.test(d);   // skip "spec is just a file path" stubs
+    return `<article class="hit" data-id="${IDP}${i.shortId}">
+      <div class="hit-top">
+        <span class="cid hit-id">${IDP}${i.shortId}</span>
+        ${prioBadge(i.priority)}${statusBadge(i.status)}
+        ${i.parent?`<span class="eid">in ${esc(shortOf(i.parent))}</span>`:""}
+      </div>
+      <div class="hit-title">${mark(i.title||"(untitled)", terms)}</div>
+      ${hasDesc?`<div class="hit-desc">${mark(d, terms)}</div>`:""}
+    </article>`;
+  }).join("") : `<div class="hit-empty">No issues match &ldquo;${esc(raw)}&rdquo;.</div>`;
+}
+gq.addEventListener("input", runSearch);
+gqClear.addEventListener("click", ()=>{ gq.value=""; runSearch(); gq.focus(); });
+gq.addEventListener("keydown", e=>{ if(e.key==="Escape"){ gq.value=""; runSearch(); } });
+
+// ---- unified tap handling: copy-chip (any device) · expand a search hit · touch row-copy ----
+const COARSE = matchMedia("(hover:none)").matches;
+document.addEventListener("click", ev=>{
+  const chip=ev.target.closest(".cid");
+  if(chip){ ev.preventDefault(); ev.stopPropagation(); copyId(chip); return; }
+  const hit=ev.target.closest(".hit");
+  if(hit){ hit.classList.toggle("open"); return; }           // tap a result → read the full spec
+  if(COARSE){ const row=ev.target.closest("[data-id]"); if(row) copyId(row); }  // touch: tap a row to copy its id
 });
 </script>
 </body>

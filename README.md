@@ -4,9 +4,11 @@ A single-file generator for a self-contained HTML **roadmap / prioritisation rep
 built from live [fp](https://fiberplane.com) issue state. One shared engine + template,
 many projects. Read-only — it never mutates fp.
 
-The report is a fully offline, theme-aware HTML file: KPI signals, open-backlog
-composition, an expandable **Epics** tab, a filterable/sortable **Issues** tab, and
-dependency signals. No external requests — safe to open anywhere or share.
+The report is a fully offline, theme-aware HTML file: a **global search** (id / title /
+spec) at the top, KPI signals, open-backlog composition, an expandable **Epics** tab, a
+filterable/sortable **Issues** tab, and dependency signals. It is **responsive** — the
+same single file lays out as cards on an iPhone-class screen — and lets you tap/right-click
+an issue id to copy it. No external requests — safe to open anywhere or share.
 
 ## Install
 
@@ -71,6 +73,28 @@ A raw CSS file of custom properties for `:root` (light) and dark. Two ship in
 Copy one and edit the hex values to rebrand — its header lists the required token
 contract. The JS status colour map references the tokens by name, so keep the names.
 
+## Deploy (publish to a static site)
+
+`fp-report-deploy.sh` regenerates the report straight into a static site repo's served
+directory, then commits and pushes — so a git-triggered host (e.g. CloudFlare Pages)
+redeploys. Still one self-contained HTML file; no build step. The target is set per
+project in `fp-report.conf`:
+
+| key | meaning |
+|-----|---------|
+| `DEPLOY_REPO` | local checkout of the publishing repo (absolute, or rel. to the conf) |
+| `DEPLOY_SUBDIR` | served directory inside it (default `src`) — the report lands here |
+| `DEPLOY_BRANCH` | branch to push (default `master`) |
+| `DEPLOY_REMOTE` | origin to add/create on first run; blank → skip remote setup |
+
+```sh
+fp-report-deploy               # generate + commit + push, using the located conf
+fp-report-deploy --dry-run     # generate only; show git status, don't commit/push
+```
+
+First run bootstraps the repo: `git init` on `DEPLOY_BRANCH`, adds origin, and (if `gh`
+is available and the remote is missing) creates the GitHub repo before pushing.
+
 ## Packaging / offline
 
 `./export.sh` bundles the engine, template, and `defaults/` into a self-contained
@@ -82,6 +106,10 @@ contract. The JS status colour map references the tokens by name, so keep the na
 (`--issues-file`, no live fp needed) and asserts on the output: placeholder
 replacement, prefix/title/theme/status injection, the open/blocked model, injection
 safety, and `--init` scaffolding. CI runs it on every push (`.github/workflows/tests.yml`).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for notable changes to the engine, template, and tooling.
 
 ## License
 
