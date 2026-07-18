@@ -174,8 +174,12 @@ __THEME_CSS__
     .search-hint{display:block;color:var(--muted);font-size:11.5px;margin:7px 2px 0}
     .kpis{grid-template-columns:1fr 1fr}
     .kpi .v{font-size:23px}
-    /* epic roadmap rows → stacked */
-    .epic{grid-template-columns:1fr;gap:8px}
+    /* epic roadmap rows → stacked. Let long titles wrap: a nowrap .et makes the grid
+       item's min-width its full text width, which forces horizontal overflow and widens
+       the viewport (defeating this whole breakpoint). min-width:0 + wrapping fixes it. */
+    .epic{grid-template-columns:1fr;gap:8px;min-width:0}
+    .epic > div{min-width:0}
+    .epic .et{white-space:normal;overflow:visible;text-overflow:clip}
     .epic .er{justify-content:flex-start}
     /* epic child rows → id+idle / title / badges */
     .echild{grid-template-columns:auto 1fr auto;row-gap:5px;column-gap:8px;padding:10px 12px 10px 16px;font-size:12.5px}
@@ -200,8 +204,11 @@ __THEME_CSS__
     #tbl td.tt::before{display:none}
     #tbl td.tt .ttl{white-space:normal;max-width:none;font-weight:650;font-size:13.5px}
     #tbl td:empty{display:none}
-    /* filters: give the in-panel search room, wrap comfortably */
+    /* filters: give the in-panel search room, wrap comfortably (min-width:0 so a
+       select's long options can't force it past the viewport) */
+    .filters{gap:8px 8px}
     .filters input[type=search]{min-width:0;flex:1 1 100%}
+    .filters select{min-width:0;max-width:100%;flex:1 1 45%}
     .filters #fEpic{max-width:none;flex:1 1 100%}
   }
 </style>
