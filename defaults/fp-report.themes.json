@@ -1,0 +1,428 @@
+{
+  "_comment": "Theme taxonomy for the Themes tiles page. This file is a MIRROR of the project's .fp/extensions/labels vocabulary: every theme 'key' must equal a label value, or that label can never win over keyword inference. fp ships no label vocabulary by default, so on a stock project every tile is keyword-inferred — see the README section 'The Themes page is only as good as your fp extensions'. Each issue's theme is resolved PER FACET in descending order of trust: (1) an explicit fp label matching a theme key (ties broken by the order themes appear here), (2) inherited from its epic — this outranks the issue's own keywords on purpose, so one initiative stays in one tile instead of fragmenting, (3) a weighted keyword match on title + description, which is how epics and standalone issues get classified, (4) 'unthemed'. Tiles count LEAF work items and partition them exactly; epics are reported separately, since an epic's status is a roll-up of its children. 'color' takes the same semantic names as the status registry (neutral/grey/blue/indigo/purple/teal/mint/green/amber/orange/red) or a raw #hex / var(--x). 'strong'/'weak' are case-insensitive regex fragments, OR-ed together; a title hit scores 6 (strong) / 3 (weak), a description hit 2 / 1. Best-scoring theme wins if it clears 'threshold' — raise it for fewer, more confident themes; lower it to leave less unthemed. A facet may override 'threshold' for its own themes.",
+  "threshold": 5,
+  "descriptionChars": 1500,
+  "facets": [
+    {
+      "key": "quality",
+      "label": "Quality",
+      "hint": "ISO/IEC 25010 product-quality characteristics — what kind of goodness the work buys",
+      "themes": [
+        {
+          "key": "security",
+          "label": "Security",
+          "color": "red",
+          "strong": [
+            "securit(y|ies)",
+            "authenticat",
+            "authoris",
+            "authoriz",
+            "vulnerab",
+            "\\bxss\\b",
+            "\\bcsrf\\b",
+            "\\brbac\\b",
+            "tenant isolation",
+            "credential",
+            "secret[s ]"
+          ],
+          "weak": [
+            "\\bauth\\b",
+            "permission",
+            "\\btoken",
+            "login",
+            "access control",
+            "gitleaks",
+            "trivy"
+          ]
+        },
+        {
+          "key": "reliability",
+          "label": "Reliability",
+          "color": "orange",
+          "strong": [
+            "reliabilit",
+            "resilien",
+            "failover",
+            "availabilit",
+            "recover",
+            "fault.toleran",
+            "incident",
+            "outage",
+            "\\bsla\\b"
+          ],
+          "weak": [
+            "retry",
+            "retries",
+            "timeout",
+            "crash",
+            "robust",
+            "stabilit",
+            "failed task",
+            "\\b5\\d\\d\\b"
+          ]
+        },
+        {
+          "key": "performance-efficiency",
+          "label": "Performance",
+          "color": "amber",
+          "strong": [
+            "performance",
+            "latency",
+            "throughput",
+            "optimi[sz]",
+            "\\bslow\\b",
+            "n\\+1",
+            "index(es|ing)\\b",
+            "\\boom\\b"
+          ],
+          "weak": [
+            "cache",
+            "caching",
+            "speed",
+            "memory",
+            "faster",
+            "batch"
+          ]
+        },
+        {
+          "key": "maintainability",
+          "label": "Maintainability",
+          "color": "purple",
+          "strong": [
+            "maintainab",
+            "refactor",
+            "duplicat",
+            "tech(nical)?.debt",
+            "unit size",
+            "complexity",
+            "clean ?up",
+            "dead code"
+          ],
+          "weak": [
+            "readab",
+            "modular",
+            "test coverage",
+            "\\blint",
+            "retire",
+            "legacy",
+            "consolidat",
+            "\\bdedup"
+          ]
+        },
+        {
+          "key": "usability",
+          "label": "Usability",
+          "color": "teal",
+          "strong": [
+            "usabilit",
+            "user experience",
+            "\\bux\\b",
+            "onboard",
+            "accessib",
+            "responsive",
+            "\\bmobile\\b"
+          ],
+          "weak": [
+            "\\bui\\b",
+            "layout",
+            "navigat",
+            "breadcrumb",
+            "\\bpage\\b",
+            "tooltip",
+            "wording"
+          ]
+        },
+        {
+          "key": "observability",
+          "label": "Observability",
+          "color": "indigo",
+          "strong": [
+            "observabilit",
+            "telemetry",
+            "monitoring",
+            "tracing",
+            "alerting",
+            "diagnos",
+            "grafana"
+          ],
+          "weak": [
+            "logging",
+            "metrics",
+            "\\blog\\b",
+            "\\btrace\\b",
+            "alert",
+            "audit trail"
+          ]
+        },
+        {
+          "key": "data-integrity",
+          "label": "Data integrity",
+          "color": "mint",
+          "strong": [
+            "data.integrit",
+            "orphan",
+            "denormali[sz]",
+            "corrupt",
+            "\\bdrift\\b",
+            "snapshot_data",
+            "consistency",
+            "contract test"
+          ],
+          "weak": [
+            "\\bschema\\b",
+            "migration",
+            "integrity",
+            "cascade",
+            "validation",
+            "backfill"
+          ]
+        },
+        {
+          "key": "compatibility",
+          "label": "Compatibility",
+          "color": "blue",
+          "strong": [
+            "compatibilit",
+            "interop",
+            "backward.compat",
+            "\\bupgrade\\b",
+            "version bump",
+            "version register"
+          ],
+          "weak": [
+            "api contract",
+            "openapi",
+            "protocol",
+            "version(ing)?\\b"
+          ]
+        },
+        {
+          "key": "portability",
+          "label": "Portability",
+          "color": "grey",
+          "strong": [
+            "portabilit",
+            "on-?prem",
+            "self-host",
+            "cross-platform",
+            "air.?gap",
+            "deployment model"
+          ],
+          "weak": [
+            "\\bdocker\\b",
+            "kubernetes",
+            "\\bk8s\\b",
+            "platform-agnostic"
+          ]
+        },
+        {
+          "key": "functional-suitability",
+          "label": "Functional suitability",
+          "color": "green",
+          "strong": [
+            "scoring model",
+            "quality model",
+            "recalibrat",
+            "benchmark",
+            "feature gat",
+            "license gat"
+          ],
+          "weak": [
+            "\\bscore",
+            "portfolio",
+            "\\bexport\\b",
+            "\\bcsv\\b",
+            "analysis result"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "area",
+      "label": "Area",
+      "hint": "Where in the system the work lands — the component facet",
+      "themes": [
+        {
+          "key": "mc-portal",
+          "label": "Portal",
+          "color": "blue",
+          "strong": [
+            "mc-portal"
+          ],
+          "weak": [
+            "\\bportal\\b",
+            "\\badmin\\b",
+            "superuser"
+          ]
+        },
+        {
+          "key": "mc-worker",
+          "label": "Worker & analyzer",
+          "color": "purple",
+          "strong": [
+            "mc-worker",
+            "mc-analyzer",
+            "mc-quality-engine",
+            "sokrates"
+          ],
+          "weak": [
+            "\\bworker\\b",
+            "analyzer",
+            "\\btask queue\\b"
+          ]
+        },
+        {
+          "key": "frontend",
+          "label": "Frontend",
+          "color": "teal",
+          "strong": [
+            "frontend",
+            "\\breact\\b",
+            "\\bcss\\b",
+            "\\bd3\\b",
+            "tailwind"
+          ],
+          "weak": [
+            "\\bui\\b",
+            "\\bpage\\b",
+            "chart",
+            "dashboard",
+            "layout",
+            "component"
+          ]
+        },
+        {
+          "key": "backend",
+          "label": "Backend",
+          "color": "indigo",
+          "strong": [
+            "backend",
+            "prisma",
+            "postgres",
+            "\\bjdbc\\b",
+            "\\bspring\\b",
+            "\\bneon\\b"
+          ],
+          "weak": [
+            "\\bapi\\b",
+            "endpoint",
+            "database",
+            "\\bsql\\b",
+            "\\bjava\\b"
+          ]
+        },
+        {
+          "key": "common",
+          "label": "Shared & tooling",
+          "color": "mint",
+          "strong": [
+            "mc-parent",
+            "monorepo",
+            "shared package",
+            "mc-algorithms",
+            "mc-license-client"
+          ],
+          "weak": [
+            "\\bshared\\b",
+            "\\bcommon\\b",
+            "library",
+            "\\bscripts?\\b"
+          ]
+        },
+        {
+          "key": "infra",
+          "label": "Infra & delivery",
+          "color": "orange",
+          "strong": [
+            "\\binfra\\b",
+            "cloudflare",
+            "\\bfly\\.io\\b",
+            "terraform",
+            "github actions",
+            "release train",
+            "promotion"
+          ],
+          "weak": [
+            "deploy",
+            "pipeline",
+            "\\bci\\b",
+            "\\bcd\\b",
+            "image tag",
+            "\\buat\\b",
+            "\\bprd\\b"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "work",
+      "label": "Work type",
+      "hint": "What kind of work it is — defect, change, or debt",
+      "threshold": 3,
+      "themes": [
+        {
+          "key": "bug",
+          "label": "Bug",
+          "color": "red",
+          "strong": [
+            "\\bbug\\b",
+            "regression",
+            "\\bbroken\\b",
+            "does ?n'?t work",
+            "incorrect",
+            "silently fail"
+          ],
+          "weak": [
+            "\\bfails?\\b",
+            "failing",
+            "\\berror\\b",
+            "\\bcrash",
+            "\\bwrong\\b",
+            "\\bfix\\b"
+          ]
+        },
+        {
+          "key": "tech-debt",
+          "label": "Tech debt",
+          "color": "amber",
+          "strong": [
+            "tech(nical)?.debt",
+            "refactor",
+            "clean ?up",
+            "duplicat",
+            "\\bretire\\b",
+            "deprecat",
+            "dead code"
+          ],
+          "weak": [
+            "legacy",
+            "consolidat",
+            "\\bunify\\b",
+            "\\bmigrate\\b",
+            "vestigial"
+          ]
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "color": "blue",
+          "strong": [
+            "\\bepic\\b",
+            "\\bintroduce\\b",
+            "implement",
+            "\\bnew page\\b",
+            "\\bnew\\b .*\\bfeature\\b"
+          ],
+          "weak": [
+            "\\badd\\b",
+            "\\bsupport\\b",
+            "improve",
+            "enhance",
+            "extend",
+            "\\benable\\b"
+          ]
+        }
+      ]
+    }
+  ]
+}

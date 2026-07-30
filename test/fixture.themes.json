@@ -1,0 +1,17 @@
+{
+  "_comment": "Theme taxonomy for the test suite. Deliberately tiny and stable so the tests assert the classifier's BEHAVIOUR (label > keyword > inherited > unthemed), not the defaults' evolving keyword lists.",
+  "threshold": 5,
+  "descriptionChars": 1500,
+  "facets": [
+    {
+      "key": "quality",
+      "label": "Quality",
+      "hint": "test facet",
+      "themes": [
+        { "key": "security",        "label": "Security",        "color": "red",    "strong": ["securit", "vulnerab"], "weak": ["auth"] },
+        { "key": "reliability",     "label": "Reliability",     "color": "orange", "strong": ["reliabilit", "failover", "recover"], "weak": ["retry"] },
+        { "key": "maintainability", "label": "Maintainability", "color": "purple", "strong": ["maintainab", "refactor"], "weak": ["cleanup"] }
+      ]
+    }
+  ]
+}
