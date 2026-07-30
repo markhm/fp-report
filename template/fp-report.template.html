@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__REPORT_TITLE__ — __APP_NAME__</title>
+<style>
+  /* ---- Theme: injected from the project's THEME_FILE (see fp-report.conf).
+     Defines the --token contract the CSS + JS colour maps depend on. ---- */
+__THEME_CSS__
+<!--#include styles/base.css -->
+<!--#include styles/tiles.css -->
+<!--#include styles/components.css -->
+<!--#include styles/mobile.css -->
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img class="brand-logo logo-light" src="__LOGO_LIGHT__" alt="__PROJECT_NAME__">
+      <img class="brand-logo logo-dark" src="__LOGO_DARK__" alt="__PROJECT_NAME__">
+      <div>
+        <div class="appname">__APP_NAME__</div>
+        <h1>__REPORT_TITLE__</h1>
+        <div class="sub" id="meta"></div>
+      </div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">◐ theme</button>
+  </header>
+
+  <section class="search" id="search">
+    <div class="search-box">
+      <input type="search" id="gq" placeholder="Search all issues — title, ID, or spec…"
+             autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search all issues">
+      <button class="search-clear" id="gqClear" type="button" hidden aria-label="Clear search">×</button>
+    </div>
+    <div class="search-hint">Tap a result to open its spec · tap the ID to copy</div>
+    <div class="search-meta" id="gqMeta" hidden></div>
+    <div class="search-results" id="gqResults" hidden></div>
+  </section>
+
+  <main id="dashboard">
+  <h2>Signals</h2>
+  <section class="kpis card" id="kpis" style="border:0;background:transparent;padding:0"></section>
+
+  <h2>Open backlog composition</h2>
+  <section class="dist">
+    <div class="card distbody"><div style="font-weight:600;margin-bottom:8px">By priority</div><div id="distPrio"></div></div>
+    <div class="card distbody"><div style="font-weight:600;margin-bottom:8px">By status</div><div id="distStatus"></div></div>
+  </section>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-panel="panel-themes" type="button">Themes <span class="n" id="tabThemesN"></span></button>
+    <button class="tab" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
+    <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
+    <label class="chk"><input type="checkbox" id="hideDone" checked> hide done</label>
+  </nav>
+
+  <div class="panel" id="panel-themes">
+    <h2>Themes <span class="sub" style="text-transform:none;letter-spacing:0">— work items by priority and status, epics counted separately · tick &ldquo;hide done&rdquo; to see live work only · click a tile to see its open issues</span></h2>
+    <div class="facets" id="facetPicker"></div>
+    <section class="tiles" id="tiles"></section>
+    <div class="tile-src" id="themeProvenance" style="margin-top:10px"></div>
+  </div>
+
+  <div class="panel" id="panel-epics" hidden>
+    <h2>Epic roadmap <span class="sub" style="text-transform:none;letter-spacing:0">— parents with children plus open issues titled &ldquo;Epic&rdquo;, by urgency · click a row to expand</span></h2>
+    <section class="card" id="epics"></section>
+  </div>
+
+  <div class="panel" id="panel-issues" hidden>
+  <h2>Prioritise — open issues <span class="sub" style="text-transform:none;letter-spacing:0">— right-click a row to copy its ID</span></h2>
+  <div class="filters" id="filters">
+    <input type="search" id="q" placeholder="search title / id…">
+    <select id="fPrio"><option value="">any priority</option></select>
+    <select id="fStatus"><option value="">any status</option></select>
+    <select id="fEpic"><option value="">any epic</option></select>
+    <select id="fTheme"><option value="">any theme</option></select>
+    <div class="toggles">
+      <label class="chk"><input type="checkbox" id="fBlocked"> blocked only</label>
+      <label class="chk"><input type="checkbox" id="fStale"> stale &gt;14d</label>
+      <label class="chk"><input type="checkbox" id="fUnprio"> unprioritised</label>
+      <label class="chk"><input type="checkbox" id="fNoParent" checked> no parent</label>
+      <label class="chk"><input type="checkbox" id="fNoChildren" checked> no children</label>
+    </div>
+    <span class="count" id="tCount"></span>
+  </div>
+  <section class="card twrap"><table id="tbl"><thead></thead><tbody></tbody></table></section>
+
+  <h2>Dependency signals</h2>
+  <section class="twocol">
+    <div class="card"><div class="distbody" style="font-weight:600">Unblock first — open issues blocking others</div><ol class="deps" id="blocking"></ol></div>
+    <div class="card"><div class="distbody" style="font-weight:600">Blocked — open issues waiting on unmet deps</div><ol class="deps" id="blockedList"></ol></div>
+  </section>
+  </div><!-- /panel-issues -->
+  </main>
+
+  <footer id="foot"></footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="fp-data">__FP_DATA__</script>
+<script>
+<!--#include app/model.js -->
+<!--#include app/kpis.js -->
+<!--#include app/epics.js -->
+<!--#include app/table.js -->
+<!--#include app/themes.js -->
+<!--#include app/deps.js -->
+<!--#include app/ui.js -->
+</script>
+</body>
+</html>

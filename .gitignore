@@ -6,3 +6,44 @@
 !fp-report.template.html
 
 **/.DS_Store
+
+# Fiberplane local issue tracking. Extensions are SOURCE (they define this project's
+# status workflow and label vocabulary, which the report mirrors) — track them. As above,
+# the directory must be re-included before anything inside it can be.
+.fp/*
+!.fp/remote.toml
+!.fp/extensions/
+.fp/extensions/**/node_modules/
+
+# Personal convenience symlinks (e.g. _fp-report -> fp-report.sh) — never committed
+/_*
+
+# Sokrates analysis. The rule above would swallow the whole _sokrates dir, so re-include
+# it first: git cannot un-ignore a file whose parent directory is still excluded.
+# Keep config.json (it defines the analysis); ignore everything Sokrates generates.
+!/_sokrates/
+_sokrates/reports
+_sokrates/findings
+_sokrates/history
+
+# fp-report's own label cache — derived from fp state, rebuilt on demand, ~100KB of churn
+# per run. Matched by name, not path, since OUTPUT_DIR is configurable.
+.fp-report.labels.json
+
+# Export bundles written outside dist/
+*.zip
+
+# Secrets. This tool reads no .env (config lives in fp-report.conf, which IS committed) —
+# this is a guard against one being dropped here by habit, not a supported config path.
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# Claude Code: shared project settings are committed, personal overrides are not
+.claude/settings.local.json

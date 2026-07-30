@@ -2,12 +2,12 @@
 #
 # install.sh — put fp-report on your PATH. Idempotent; safe to re-run.
 #
-#   ./install.sh            # symlinks ~/bin/fp-report -> ./_fp-report.sh
-#   ./install.sh DIR        # install into DIR instead of ~/bin
+#   tools/install.sh        # symlinks ~/bin/fp-report -> ../fp-report.sh
+#   tools/install.sh DIR    # install into DIR instead of ~/bin
 
 set -euo pipefail
 
-DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # repo root (this script lives in tools/)
 BINDIR="${1:-$HOME/bin}"
 
 mkdir -p "$BINDIR"

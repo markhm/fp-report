@@ -1,0 +1,49 @@
+  /* ---- mobile (iPhone Pro ~390–430px) ---- */
+  @media (max-width:480px){
+    .wrap{padding:14px 12px 60px}
+    header.top{gap:10px}
+    .brand{gap:11px}
+    .brand-logo{height:40px}
+    h1{font-size:17px}
+    .appname{font-size:11px}
+    .search{position:sticky;top:0;z-index:6;background:var(--page);padding:8px 0;margin:8px 0 4px}
+    .search-hint{display:block;color:var(--muted);font-size:11.5px;margin:7px 2px 0}
+    .kpis{grid-template-columns:1fr 1fr}
+    .kpi .v{font-size:23px}
+    /* epic roadmap rows → stacked. Let long titles wrap: a nowrap .et makes the grid
+       item's min-width its full text width, which forces horizontal overflow and widens
+       the viewport (defeating this whole breakpoint). min-width:0 + wrapping fixes it. */
+    .epic{grid-template-columns:1fr;gap:8px;min-width:0}
+    .epic > div{min-width:0}
+    .epic .et{white-space:normal;overflow:visible;text-overflow:clip}
+    .epic .er{justify-content:flex-start}
+    /* epic child rows → id+idle / title / badges */
+    .echild{grid-template-columns:auto 1fr auto;row-gap:5px;column-gap:8px;padding:10px 12px 10px 16px;font-size:12.5px}
+    .echild .eeid{grid-column:1;grid-row:1}
+    .echild .eet{grid-column:1 / -1;grid-row:2;white-space:normal;overflow:visible;text-overflow:clip}
+    .echild > .badge:nth-child(3){grid-column:1;grid-row:3;justify-self:start}
+    .echild > .badge:nth-child(4){grid-column:2;grid-row:3;justify-self:start}
+    .echild .eeidle{grid-column:3;grid-row:1;text-align:right}
+    /* prioritisation table → stacked cards */
+    section.card.twrap{background:transparent;border:0;border-radius:0}
+    .twrap{overflow:visible}
+    #tbl thead{display:none}
+    #tbl,#tbl tbody{display:block;width:100%}
+    #tbl tr{display:block;background:var(--surface);border:1px solid var(--border);
+      border-radius:12px;margin-bottom:10px;padding:10px 12px}
+    #tbl td{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+      border:0;padding:3px 0;text-align:left}
+    #tbl td::before{content:attr(data-label);color:var(--muted);font-size:10.5px;font-weight:600;
+      text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
+    #tbl td.num{text-align:left}
+    #tbl td.tt{display:block;padding-bottom:7px;margin-bottom:5px;border-bottom:1px solid var(--border)}
+    #tbl td.tt::before{display:none}
+    #tbl td.tt .ttl{white-space:normal;max-width:none;font-weight:650;font-size:13.5px}
+    #tbl td:empty{display:none}
+    /* filters: give the in-panel search room, wrap comfortably (min-width:0 so a
+       select's long options can't force it past the viewport) */
+    .filters{gap:8px 8px}
+    .filters input[type=search]{min-width:0;flex:1 1 100%}
+    .filters select{min-width:0;max-width:100%;flex:1 1 45%}
+    .filters #fEpic{max-width:none;flex:1 1 100%}
+  }

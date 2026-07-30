@@ -5,18 +5,18 @@
 # carries its own defaults (config, status registry, logos, both themes), so it runs
 # out of the box and is customised by copying defaults/ into a project's scripts/.
 #
-#   ./export.sh              # writes dist/fp-report.zip
-#   ./export.sh -o PATH.zip  # write to a custom path
+#   tools/export.sh              # writes dist/fp-report.zip
+#   tools/export.sh -o PATH.zip  # write to a custom path
 
 set -euo pipefail
 
-DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # repo root (this script lives in tools/)
 NAME="fp-report"
 OUT="$DIR/dist/$NAME.zip"
 while [ $# -gt 0 ]; do
     case "$1" in
         -o|--out) shift; OUT="$1" ;;
-        -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown arg: $1" >&2; exit 2 ;;
     esac
     shift
@@ -31,8 +31,13 @@ mkdir -p "$STAGE/defaults"
 
 # The portable tool — engine, template, README + all defaults. (export.sh itself is
 # left out: a recipient runs the tool, they don't re-export.)
-cp "$DIR/fp-report.sh" "$DIR/fp-report.template.html" "$DIR/README.md" "$STAGE/"
+cp "$DIR/fp-report.sh" "$DIR/README.md" "$STAGE/"
 cp "$DIR"/defaults/* "$STAGE/defaults/"
+# the template is a directory of parts, assembled at render time — ship it whole
+mkdir -p "$STAGE/template/styles" "$STAGE/template/app"
+cp "$DIR"/template/fp-report.template.html "$STAGE/template/"
+cp "$DIR"/template/styles/* "$STAGE/template/styles/"
+cp "$DIR"/template/app/*    "$STAGE/template/app/"
 chmod +x "$STAGE/fp-report.sh"
 
 mkdir -p "$(dirname "$OUT")"
