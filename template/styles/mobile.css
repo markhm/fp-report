@@ -14,6 +14,7 @@
        item's min-width its full text width, which forces horizontal overflow and widens
        the viewport (defeating this whole breakpoint). min-width:0 + wrapping fixes it. */
     .epic{grid-template-columns:1fr;gap:8px;min-width:0}
+    .epic.ogroup{grid-template-columns:1fr}   /* out-specifies the desktop 1fr/auto orphan header */
     .epic > div{min-width:0}
     .epic .et{white-space:normal;overflow:visible;text-overflow:clip}
     .epic .er{justify-content:flex-start}

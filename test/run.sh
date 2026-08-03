@@ -60,6 +60,8 @@ inline_include(){
 }
 # th <html> <check> [args…] — assert on the classifier in the rendered report (skips where node absent)
 th(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_themes.js" "$@"; }
+# orph <html> <check> [args…] — assert on orphan detection in the rendered report (same skip)
+orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orphans.js" "$@"; }
 
 echo "fp-report test suite"
 
@@ -82,7 +84,7 @@ t "output is still ONE html file"          test -f "$BASE"
 t "no include directive survives"          bash -c '! grep -q "#include" "'"$BASE"'"'
 t "still exactly one <script> block"       bash -c '[ "$(grep -c "^<script>$" "'"$BASE"'")" -eq 1 ]'
 t "CSS from every style part is present"   bash -c 'for sel in "box-sizing:border-box" ".tiles{" ".brow{" "max-width:480px"; do grep -q "$sel" "'"$BASE"'" || exit 1; done'
-t "JS from every app part is present"      bash -c 'for fn in "renderTable" "renderThemes" "runSearch" "distBars" "childRow" "showPanel"; do grep -q "$fn" "'"$BASE"'" || exit 1; done'
+t "JS from every app part is present"      bash -c 'for fn in "renderTable" "renderThemes" "runSearch" "distBars" "childRow" "orphanGroups" "showPanel"; do grep -q "$fn" "'"$BASE"'" || exit 1; done'
 t "a missing include fails loudly"         bad_include
 t "an inline include never ships silently"  inline_include
 
@@ -121,6 +123,29 @@ t "fallback taxonomy still parses"             jsparse "$TH"
 NL="$TMP/nolabels.html"; mkconf "$TMP/nl.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'FETCH_LABELS="false"'
 render "$NL" "$FIX" "$TMP/nl.conf"
 t "FETCH_LABELS=false still renders"           test -s "$NL"
+
+# ---- orphans: open work left behind in a closed epic ----
+t "Orphans tab sits after Issues"            bash -c 'grep -q "data-panel=\"panel-orphans\"" "'"$BASE"'" && [ "$(grep -n "data-panel=\"panel-issues\"" "'"$BASE"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-orphans\"" "'"$BASE"'" | head -1 | cut -d: -f1)" ]'
+t "orphans panel rendered"                   grep -q 'id="orphans"' "$BASE"
+# the baseline fixture closes no epic, so it must report a clean backlog
+t "clean backlog finds no orphans"           orph "$BASE" count 0
+t "…and shows the empty state"               orph "$BASE" html "No orphans"
+ORPH="$TMP/orphans.html"
+render "$ORPH" "$ROOT/test/fixture.orphans.json" "$TMP/base.conf"
+t "orphan fixture renders"                   test -s "$ORPH"
+t "3 orphans across 2 closed epics"          orph "$ORPH" count 3
+t "…grouped by the epic that closed"         orph "$ORPH" groups 2
+t "open child of a done epic is an orphan"   orph "$ORPH" is orph0001 yes
+t "deferred is not terminal → also stranded" orph "$ORPH" is orph0002 yes
+t "a rejected epic strands its children too" orph "$ORPH" is orph0003 yes
+t "…and files it under that epic"            orph "$ORPH" group orph0003 epic0002
+t "done child of a done epic is fine"        orph "$ORPH" is kept0001 no
+t "child of a live epic is fine"             orph "$ORPH" is kept0002 no
+# only the DIRECT parent counts: re-homing the stranded sub-epic moves its subtree, so
+# reporting its children as orphans too would just restate the same fix
+t "nested under an open orphan isn't one"    orph "$ORPH" is nest0001 no
+t "the stranded work is listed by id"        orph "$ORPH" html "orph0001"
+t "orphan JS parses"                         jsparse "$ORPH"
 
 # ---- prefix ----
 t "default prefix renders IDP=FP"          grep -q 'const IDP = "FP"' "$BASE"

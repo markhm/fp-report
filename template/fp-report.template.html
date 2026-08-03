@@ -54,6 +54,7 @@ __THEME_CSS__
     <button class="tab active" data-panel="panel-themes" type="button">Themes <span class="n" id="tabThemesN"></span></button>
     <button class="tab" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
     <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
+    <button class="tab" data-panel="panel-orphans" type="button">Orphans <span class="n" id="tabOrphansN"></span></button>
     <label class="chk"><input type="checkbox" id="hideDone" checked> hide done</label>
   </nav>
 
@@ -94,6 +95,12 @@ __THEME_CSS__
     <div class="card"><div class="distbody" style="font-weight:600">Blocked — open issues waiting on unmet deps</div><ol class="deps" id="blockedList"></ol></div>
   </section>
   </div><!-- /panel-issues -->
+
+  <div class="panel" id="panel-orphans" hidden>
+    <h2>Orphans <span class="sub" style="text-transform:none;letter-spacing:0">— unfinished work left behind in a closed epic · re-home it, or close it · click a row to collapse</span></h2>
+    <section class="card" id="orphans"></section>
+    <div class="tile-src" id="orphanRule" style="margin-top:10px"></div>
+  </div>
   </main>
 
   <footer id="foot"></footer>
@@ -105,6 +112,7 @@ __THEME_CSS__
 <!--#include app/model.js -->
 <!--#include app/kpis.js -->
 <!--#include app/epics.js -->
+<!--#include app/orphans.js -->
 <!--#include app/table.js -->
 <!--#include app/themes.js -->
 <!--#include app/deps.js -->

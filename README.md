@@ -6,7 +6,8 @@ many projects. Read-only — it never mutates fp.
 
 The report is a fully offline, theme-aware HTML file: a **global search** (id / title /
 spec) at the top, KPI signals, open-backlog composition, a tiled **Themes** tab, an
-expandable **Epics** tab, a filterable/sortable **Issues** tab, and dependency signals.
+expandable **Epics** tab, a filterable/sortable **Issues** tab, an **Orphans** tab for
+work left behind in closed epics, and dependency signals.
 It is **responsive** — the same single file lays out as cards on an iPhone-class screen —
 and lets you tap/right-click an issue id to copy it. No external requests — safe to open
 anywhere or share.
@@ -212,6 +213,29 @@ A raw CSS file of custom properties for `:root` (light) and dark. Two ship in
 Copy one and edit the hex values to rebrand — its header lists the required token
 contract. The JS status colour map references the tokens by name, so keep the names.
 
+## Orphans — work left behind in a closed epic
+
+The **Orphans** tab needs no configuration; it is derived from the status registry's
+`role` field. An issue is an orphan when **its parent is terminal and it is not**:
+someone closed the epic without finishing, re-homing, or closing what was still inside
+it. Nothing else in the report shows this work — the Epics tab lists only epics with
+open children, and on the Issues tab these rows are hidden by the default `no parent`
+filter — so it stays invisible until you go looking for it.
+
+Rows are grouped by the epic that closed, because that is how you fix it: for each
+group, move the list under a live epic, make it standalone, or close it.
+
+Two edges are worth stating, since the tab decides them for you:
+
+- **Terminal means `done` *or* `rejected`.** A rejected epic strands its children just
+  as thoroughly as a done one. On the child side, "not terminal" is wider than "open" —
+  a `deferred` sub-issue under a closed epic will never be picked up either, so it counts.
+- **Only the direct parent is tested.** A still-open sub-epic under a closed epic *is*
+  the orphan; re-homing it moves everything beneath it, so its own children are not
+  listed again.
+
+`Orphaned — under a closed epic` also appears as a KPI signal at the top of the page.
+
 ## Deploy (publish to a static site)
 
 **The model:** the report is one self-contained HTML file, so "publishing" is just
@@ -270,7 +294,7 @@ fp-report-deploy.sh     publish the rendered report to a static-site repo
 template/               the report, authored as parts and assembled at render time
   fp-report.template.html   the shell: page markup + include directives
   styles/*.css              base · tiles · components · mobile
-  app/*.js                  model · kpis · epics · table · themes · deps · ui
+  app/*.js                  model · kpis · epics · orphans · table · themes · deps · ui
 defaults/               reference config, status registry, theme taxonomy, themes, logos
 tools/                  install.sh, export.sh
 test/                   run.sh + fixtures + assertion helpers
@@ -321,23 +345,27 @@ silently without it). CI runs the same one line on every push
 
 What it covers: placeholder replacement and injection safety (a hostile issue title must
 not break out of the embedded JSON), prefix/title/theme/status/taxonomy injection and
-their fallbacks, the open/blocked model, `--init` scaffolding, the pure path helpers, and
-the Themes model — resolution order (label > inherited > keyword > unthemed), the
-partition invariants, epic/leaf separation, and epic-scoped priority.
+their fallbacks, the open/blocked model, `--init` scaffolding, the pure path helpers, the
+Themes model — resolution order (label > inherited > keyword > unthemed), the partition
+invariants, epic/leaf separation, and epic-scoped priority — and the orphan rule,
+including every near-miss it must *not* flag.
 
 **Adding a test.** `run.sh` is a flat script of one-line assertions; `t "<description>"
-<command…>` passes if the command exits 0. Three helpers do the heavy lifting:
+<command…>` passes if the command exits 0. Four helpers do the heavy lifting:
 
 | helper | use it for |
 |---|---|
 | `render <out> <issues> [conf]` | run the engine offline; `mkconf` writes a throwaway config |
 | `python3 test/assert_model.py <html> <metric> <n>` | issue/open/blocked counts parsed out of the embedded JSON |
 | `th <html> <check> [args…]` | the Themes model — see `test/assert_themes.js` for the checks |
+| `orph <html> <check> [args…]` | the orphan rule — see `test/assert_orphans.js` for the checks |
 
-`test/assert_themes.js` evaluates the report's **real** injected script against a minimal
-DOM stub, so classifier assertions exercise the shipped code rather than a reimplementation
-of its rules — a rule cannot pass its test and still be wrong in the browser. Fixtures stay
-deliberately tiny (7 issues, a 3-theme taxonomy) so every expected number is checkable by hand.
+The `assert_*.js` helpers share `test/dom-stub.js`, which evaluates the report's **real**
+injected script against a minimal DOM stub — so assertions exercise the shipped code
+rather than a reimplementation of its rules, and a rule cannot pass its test and still be
+wrong in the browser. It also hands back the elements the script rendered into, so a check
+can assert on the produced markup. Fixtures stay deliberately tiny (7 issues + a 9-issue
+orphan fixture, a 3-theme taxonomy) so every expected number is checkable by hand.
 
 ## Changelog
 

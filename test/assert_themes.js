@@ -10,29 +10,8 @@
  * assertions exercise the shipped classifier rather than a copy of its rules.
  * Exits 0 on pass, 1 on mismatch.
  */
-const fs = require("fs");
 const [html_path, check, ...args] = process.argv.slice(2);
-const html = fs.readFileSync(html_path, "utf-8");
-const data = html.match(/<script type="application\/json" id="fp-data">([\s\S]*?)<\/script>/)[1];
-const app = html.match(/<script>\n([\s\S]*?)<\/script>/)[1];
-
-// --- minimal DOM stub: enough for the report's top-level render calls to run ---
-const el = () => ({
-  innerHTML: "", textContent: "", value: "", hidden: false, dataset: {}, style: {},
-  classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-  addEventListener() {}, insertAdjacentHTML() {}, toggleAttribute() {}, scrollIntoView() {},
-  querySelectorAll: () => [], querySelector: () => el(), closest: () => null,
-  getAttribute: () => null, setAttribute() {}, focus() {}, remove() {}, appendChild() {}, select() {},
-});
-const nodes = {};
-global.document = {
-  getElementById: id => (id === "fp-data" ? { textContent: data } : (nodes[id] ||= el())),
-  querySelector: () => el(), querySelectorAll: () => [], createElement: () => el(),
-  addEventListener() {}, body: el(), documentElement: { getAttribute: () => null, setAttribute() {} },
-};
-global.matchMedia = () => ({ matches: false });
-global.navigator = { clipboard: null };
-global.setTimeout = () => {}; global.clearTimeout = () => {};
+const { app } = require("./dom-stub")(html_path);
 
 // The app script is strict-mode, so its consts stay inside eval's scope — append the
 // assertion there too, and report back through a global.

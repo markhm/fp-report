@@ -18,6 +18,11 @@
   .pbar > i{display:block;height:100%}
   .epic .ec{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
   .epic .er{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+  /* ---- orphans ---- */
+  /* same roadmap idiom as .epic, minus the progress bar: a closed epic has nothing left
+     to progress — what matters is which of its children were never re-homed */
+  .epic.ogroup{grid-template-columns:1fr auto}
+  .epic.ogroup .et{color:var(--muted)}                 /* the container is closed — the children are the subject */
   /* ---- badges ---- */
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:560;
     padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}

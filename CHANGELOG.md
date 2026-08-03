@@ -18,6 +18,15 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **Orphans tab** (after Issues) — work left behind in a closed epic: an issue whose
+  parent is terminal (`done` or `rejected`) while it is not. Grouped by the epic that
+  closed, because that is the unit of the fix — re-home the list, or close it. Nothing
+  else in the report surfaces this work: the Epics tab lists only epics with open
+  children, and on the Issues tab these rows are hidden by the default `no parent`
+  filter. Two calls the tab makes for you: a `deferred` child counts as stranded (it
+  will never be picked up either), and only the *direct* parent is tested, so a
+  still-open sub-epic is the orphan rather than everything beneath it. Also surfaced as
+  an `Orphaned — under a closed epic` KPI signal.
 - **Themes tab** — a new first/default page of tiles that groups the whole backlog into
   themes. Each tile carries a **priority distribution** (critical / high / medium / low /
   unset), every row a bar **segmented by status**, scaled against the largest row across

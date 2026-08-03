@@ -13,6 +13,7 @@ const kpi = [
   {v:ISSUES.filter(i=>i._blocked).length, l:"Blocked (unmet deps)", accent:"var(--warning)"},
   {v:ISSUES.filter(i=>i._isStale).length, l:"Stale >14d", accent:"var(--warning)"},
   {v:openIssues.filter(i=>i._unprio).length, l:"Unprioritised open", accent:"var(--baseline)"},
+  {v:ISSUES.filter(i=>i._orphan).length, l:"Orphaned — under a closed epic", accent:"var(--serious)"},
   {v:ISSUES.filter(i=>i._open&&i._badDesc).length, l:"Hygiene: bad descriptions", accent:"var(--serious)"},
 ];
 document.getElementById("kpis").innerHTML = kpi.map(k=>`

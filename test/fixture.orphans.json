@@ -1,0 +1,16 @@
+{
+  "_comment": "Orphan fixture: two closed epics with leftovers, plus the near-misses that must NOT count. Kept separate from fixture.issues.json so the baseline render keeps asserting the clean/empty case.",
+  "issues": [
+    { "id": "e1", "shortId": "epic0001", "title": "Closed epic with leftovers",   "description": "Marked done while work was still inside.", "status": "done",     "priority": "medium",   "parent": null, "dependencies": [], "createdAt": "2026-03-01T10:00:00Z", "updatedAt": "2026-06-01T10:00:00Z" },
+    { "id": "o1", "shortId": "orph0001", "title": "Stranded open task",           "description": "Open, but its epic was closed.",           "status": "todo",     "priority": "high",     "parent": "e1", "dependencies": [], "createdAt": "2026-03-02T10:00:00Z", "updatedAt": "2026-06-02T10:00:00Z" },
+    { "id": "o2", "shortId": "orph0002", "title": "Stranded deferred task",       "description": "Deferred is not terminal — also stranded.", "status": "deferred", "priority": "low",     "parent": "e1", "dependencies": [], "createdAt": "2026-03-03T10:00:00Z", "updatedAt": "2026-06-03T10:00:00Z" },
+    { "id": "k1", "shortId": "kept0001", "title": "Finished before the close",    "description": "Done inside a done epic — correctly closed out, not an orphan.", "status": "done", "priority": "low", "parent": "e1", "dependencies": [], "createdAt": "2026-03-04T10:00:00Z", "updatedAt": "2026-05-20T10:00:00Z" },
+    { "id": "n1", "shortId": "nest0001", "title": "Nested under a stranded task", "description": "Its own parent (orph0001) is open, so re-homing that one moves this too.", "status": "todo", "priority": "medium", "parent": "o1", "dependencies": [], "createdAt": "2026-03-05T10:00:00Z", "updatedAt": "2026-06-04T10:00:00Z" },
+
+    { "id": "e2", "shortId": "epic0002", "title": "Rejected epic with leftovers", "description": "Won't-do epic that still contains open work.", "status": "rejected", "priority": "low",   "parent": null, "dependencies": [], "createdAt": "2026-03-06T10:00:00Z", "updatedAt": "2026-06-05T10:00:00Z" },
+    { "id": "o3", "shortId": "orph0003", "title": "Stranded under a rejected epic", "description": "A rejected epic strands its children exactly like a done one.", "status": "in-progress", "priority": "critical", "parent": "e2", "dependencies": [], "createdAt": "2026-03-07T10:00:00Z", "updatedAt": "2026-06-06T10:00:00Z" },
+
+    { "id": "e3", "shortId": "epic0003", "title": "Live epic",                    "description": "Still open — its children are not orphans.", "status": "in-progress", "priority": "high", "parent": null, "dependencies": [], "createdAt": "2026-03-08T10:00:00Z", "updatedAt": "2026-06-07T10:00:00Z" },
+    { "id": "c1", "shortId": "kept0002", "title": "Ordinary child of a live epic", "description": "The normal case.",                         "status": "todo",     "priority": "medium",   "parent": "e3", "dependencies": [], "createdAt": "2026-03-09T10:00:00Z", "updatedAt": "2026-06-08T10:00:00Z" }
+  ]
+}

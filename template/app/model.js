@@ -55,6 +55,13 @@ for(const i of ISSUES){
   i._blocked = i._open && i._unmet.length>0;
   i._blockingOpen = (dependents.get(i.id)||[]).filter(x=>x._open===undefined?OPEN.has(x.status):x._open).length;
   i._unprio = i._open && !PRIO_META[i.priority];
+  // orphan: the parent epic is CLOSED (terminal — done or rejected) but this issue is not.
+  // The work was neither finished nor re-homed when its epic was closed, so it now sits in
+  // a container nobody is looking at. Only the DIRECT parent is tested: a still-open
+  // sub-epic under a closed epic is itself the orphan, and re-homing it moves its whole
+  // subtree — reporting its children too would just restate the same fix.
+  const par = i.parent ? byId.get(i.parent) : null;
+  i._orphan = !!(par && MET.has(par.status) && !MET.has(i.status));
   const d = (i.description||"").trim();
   i._badDesc = /^\/\S+\.(md|txt|json)$/.test(d) || d==="";
 }
