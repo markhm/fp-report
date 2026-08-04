@@ -18,6 +18,26 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **Trends tab** (after Orphans) — a cumulative flow diagram: how many issues sat in each
+  status on every past day, as a stacked area chart. Built by **replaying `fp log`**
+  (every `status: A → B`, `issue_created` and `issue_deleted` the project recorded), not
+  by interpolating the issue list — a snapshot can only assume each issue held its current
+  status since `createdAt`, which draws a flat line for exactly the period you wanted to
+  see and back-dates today's completions to the start of the project. The replay's final
+  day reconciles **exactly** with the live backlog, status for status, so the chart cannot
+  drift from the "By status" bars above it; where it *has* to assume (issues predating the
+  log, deleted issues, a live status the log never recorded a move to) the note under the
+  chart says so and counts them. Tunable by de-selecting status bands in the legend and by
+  narrowing to a theme, plus 30d/90d/All ranges and a table view. New `FETCH_HISTORY` conf
+  key, `--no-history` and `--history-file` flags; with no history the tab removes itself.
+- **`stack` in the status registry** — bottom-to-top band order for the Trends chart. This
+  is a colour decision, not a cosmetic one: the natural cumulative-flow order puts
+  `in-progress` (ochre) directly above `rejected` (orange) in the shipped palette, at
+  OKLab ΔE 1.4 under deuteranopia and 9.0 even for normal vision — two touching bands
+  nobody can separate. Swapping `in-progress` and `selected` clears every adjacent pair to
+  ΔE ≥ 12.9 in both light and dark, which is what the default registry now ships. A
+  registry without the field falls back to the canonical order, which is correct in shape
+  but unvalidated for that project's palette.
 - **Orphans tab** (after Issues) — work left behind in a closed epic: an issue whose
   parent is terminal (`done` or `rejected`) while it is not. Grouped by the epic that
   closed, because that is the unit of the fix — re-home the list, or close it. Nothing

@@ -41,6 +41,21 @@
     #tbl td.tt::before{display:none}
     #tbl td.tt .ttl{white-space:normal;max-width:none;font-weight:650;font-size:13.5px}
     #tbl td:empty{display:none}
+    /* trends: the theme picker can run to a dozen chips, which would push the chart
+       off the first screen — scroll it sideways as one row instead of wrapping into a
+       wall. -webkit-overflow-scrolling keeps the flick gesture native on iOS. */
+    .trend-controls{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+      padding-bottom:4px;margin-bottom:8px}
+    .trend-controls > *{flex:0 0 auto}
+    .trend-controls .facet{padding:5px 11px;font-size:12px}
+    .chartcard{padding:10px 10px 8px}
+    /* the legend stays wrapped — it is the status key, and hiding half of it behind a
+       scroll would hide the toggles themselves */
+    .tlegend{gap:5px}
+    .tchip{padding:5px 9px;font-size:11.5px}
+    .ttip{min-width:0;font-size:11.5px;padding:8px 10px}
+    #trendTable table{font-size:11.5px}
+    #trendTable th,#trendTable td{padding:6px 7px}
     /* filters: give the in-panel search room, wrap comfortably (min-width:0 so a
        select's long options can't force it past the viewport) */
     .filters{gap:8px 8px}

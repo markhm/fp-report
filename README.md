@@ -60,6 +60,8 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `THEMES_FILE` | theme taxonomy for the Themes tab (see below) |
 | `FETCH_LABELS` | fetch each issue's labels (default `true`; see below) |
 | `LABEL_CACHE` / `LABEL_JOBS` | label cache path / parallel fetches (defaults are fine) |
+| `FETCH_HISTORY` | replay `fp log` for the Trends tab (default `true`; see below) |
+| `HISTORY_LIMIT` | `fp log --limit` (default `200000` — i.e. "everything") |
 | `THEME_FILE` | colour theme (see below) |
 | `LOGO_LIGHT` / `LOGO_DARK` | brand wordmarks (light / dark theme); omit → neutral default |
 | `OUTPUT_DIR` / `OUTPUT_FILE` | where the HTML lands (default `../reports/fp-report.html`) |
@@ -236,6 +238,75 @@ Two edges are worth stating, since the tab decides them for you:
 
 `Orphaned — under a closed epic` also appears as a KPI signal at the top of the page.
 
+## Trends — a cumulative flow diagram, replayed from the activity log
+
+The **Trends** tab is a stacked area chart of how many issues sat in each status on every
+past day. Band *thickness* is the queue at that stage: a widening band is work piling up,
+the top edge is total scope, and the base is delivery.
+
+### It is a replay, not an interpolation
+
+The issue list is a **snapshot** — it knows what is in progress now and nothing about what
+was in progress in May. Charting trends from it alone forces the usual fudge: assume every
+issue held its current status since `createdAt`, which draws a flat line for exactly the
+period you wanted to look at, and back-dates today's 790 "done" to the start of the project.
+
+So this tab is built from `fp log` instead, which records every `status: A → B`,
+`issue_created` and `issue_deleted` the project has ever seen. Replaying those gives the
+real count per status per day. Concretely, on maintainability-cloud that is 2,526 events
+across 157 days — and the replay's final day matches the live backlog **exactly**, status
+for status, which is the property that makes the chart trustworthy: it cannot drift from
+the "By status" bars at the top of the same page.
+
+Reconstruction rules, in order of trust:
+
+| | rule |
+|---|---|
+| **born** | its `issue_created` event, else `createdAt` from the issue list |
+| **initial status** | the `from` of its **first transition** — the log records what it left, so this is exact. Never moved → its current status |
+| **final status** | for a live issue, the **live** status. This deliberately outranks the last transition's `to`, so a missing log row can't leave the chart disagreeing with the dashboard |
+| **end** | its `issue_deleted` event, else open-ended |
+
+Deleted issues are counted for the span they existed, then drop out. Issues that predate
+the log enter at their `createdAt` in their current status — their early history is flat
+rather than replayed. **The chart states all of this itself**: the line under it reports
+the event count and every caveat that applies to your data, so you always know how much of
+what you are looking at is replayed and how much is assumed.
+
+### Tuning it
+
+- **Status bands** — click any legend chip to drop or restore its band. De-selected chips
+  hollow the swatch and strike the label, so "off" never depends on colour alone.
+- **Themes** — the same facets as the Themes tab. Picking one narrows the population the
+  chart counts; `All` resets. (Deleted issues leave the chart while a theme filter is on:
+  there is no row left to classify them with, and the note says so.)
+- **Range** — 30d / 90d / All.
+- **Table view** — the same numbers as text. Not optional decoration: two of the default
+  status hues sit under 3:1 contrast against the light surface, so every value the chart
+  paints has to be readable without relying on the colour.
+
+Hovering snaps a crosshair to the nearest day and lists every visible status at once; the
+chart is keyboard-focusable and ←/→ walk the same readout.
+
+### Band order is a colour decision (`stack`)
+
+Bands stack bottom→top by the registry's optional `stack` field. This is not cosmetic. The
+natural cumulative-flow order — terminal states at the base, then open work
+most-advanced-first — puts `in-progress` (ochre) directly above `rejected` (orange) in the
+shipped palette: **OKLab ΔE 1.4 under deuteranopia, and 9.0 even for normal vision.** Two
+touching bands nobody can separate. Swapping just `in-progress` and `selected` clears every
+adjacent pair to ΔE ≥ 12.9 in *both* light and dark, which is the order the default
+registry ships.
+
+A registry without `stack` falls back to the canonical order — correct in shape, but
+unvalidated for your palette. **If you recolour your statuses, re-check the adjacent pairs**
+rather than eyeballing them. Registries copied from an older `fp-report --init` predate the
+field; add it to get the validated order.
+
+Set `FETCH_HISTORY="false"` (or pass `--no-history`) to skip the `fp log` call — one extra
+call per run, ~0.5s on a 1000-issue project. Without history there is nothing to replay, so
+the tab removes itself and the rest of the report is unaffected.
+
 ## Deploy (publish to a static site)
 
 **The model:** the report is one self-contained HTML file, so "publishing" is just
@@ -293,8 +364,8 @@ fp-report.sh            the engine — locates config, pulls fp state, renders
 fp-report-deploy.sh     publish the rendered report to a static-site repo
 template/               the report, authored as parts and assembled at render time
   fp-report.template.html   the shell: page markup + include directives
-  styles/*.css              base · tiles · components · mobile
-  app/*.js                  model · kpis · epics · orphans · table · themes · deps · ui
+  styles/*.css              base · tiles · components · chart · mobile
+  app/*.js                  model · kpis · epics · orphans · table · themes · deps · trends · ui
 defaults/               reference config, status registry, theme taxonomy, themes, logos
 tools/                  install.sh, export.sh
 test/                   run.sh + fixtures + assertion helpers
@@ -347,25 +418,31 @@ What it covers: placeholder replacement and injection safety (a hostile issue ti
 not break out of the embedded JSON), prefix/title/theme/status/taxonomy injection and
 their fallbacks, the open/blocked model, `--init` scaffolding, the pure path helpers, the
 Themes model — resolution order (label > inherited > keyword > unthemed), the partition
-invariants, epic/leaf separation, and epic-scoped priority — and the orphan rule,
-including every near-miss it must *not* flag.
+invariants, epic/leaf separation, and epic-scoped priority — the orphan rule, including
+every near-miss it must *not* flag, and the Trends replay: parsing `fp log` text, initial
+status taken from the first transition rather than back-dating the current one, deleted
+issues counted only for the span they existed, and — the one that matters most — that the
+replay's final day reconciles **exactly** with the live snapshot, status for status.
 
 **Adding a test.** `run.sh` is a flat script of one-line assertions; `t "<description>"
-<command…>` passes if the command exits 0. Four helpers do the heavy lifting:
+<command…>` passes if the command exits 0. A few helpers do the heavy lifting:
 
 | helper | use it for |
 |---|---|
 | `render <out> <issues> [conf]` | run the engine offline; `mkconf` writes a throwaway config |
+| `render_h <out> <issues> <log> <conf>` | same, plus a saved `fp log` transcript to replay |
 | `python3 test/assert_model.py <html> <metric> <n>` | issue/open/blocked counts parsed out of the embedded JSON |
 | `th <html> <check> [args…]` | the Themes model — see `test/assert_themes.js` for the checks |
 | `orph <html> <check> [args…]` | the orphan rule — see `test/assert_orphans.js` for the checks |
+| `tr <html> <check> [args…]` | the Trends replay — see `test/assert_trends.js` for the checks |
 
 The `assert_*.js` helpers share `test/dom-stub.js`, which evaluates the report's **real**
 injected script against a minimal DOM stub — so assertions exercise the shipped code
 rather than a reimplementation of its rules, and a rule cannot pass its test and still be
 wrong in the browser. It also hands back the elements the script rendered into, so a check
 can assert on the produced markup. Fixtures stay deliberately tiny (7 issues + a 9-issue
-orphan fixture, a 3-theme taxonomy) so every expected number is checkable by hand.
+orphan fixture, a 19-event `fp log` transcript, a 3-theme taxonomy) so every expected
+number is checkable by hand.
 
 ## Changelog
 

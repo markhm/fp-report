@@ -1,0 +1,59 @@
+
+Showing 19 high-signal events (3 low-signal hidden, use --all to see all)
+
+2026-07-08 10:00:00  dev@example.com  FP-child001
+  status: selected → in-progress
+
+2026-07-05 10:00:00  dev@example.com  FP-stand001
+  status: todo → selected
+
+2026-07-01 10:00:00  dev@example.com  FP-epic0001
+  comment: "Umbrella still open — children carry the work."
+
+2026-06-20 10:00:00  dev@example.com  FP-child002
+  status: in-progress → done
+
+2026-06-14 10:00:00  dev@example.com  FP-gone0001
+  issue_deleted: "A task that was deleted mid-flight"
+
+2026-06-10 10:00:00  dev@example.com  FP-gone0001
+  status: todo → in-progress
+
+2026-06-08 10:00:00  dev@example.com  FP-child002
+  status: todo → in-progress
+
+2026-06-05 10:00:00  dev@example.com  FP-child001
+  status: todo → selected
+
+2026-06-01 10:00:00  dev@example.com  FP-stand001
+  issue_created: "A selected standalone task"
+
+2026-05-28 10:00:00  dev@example.com  FP-gone0001
+  issue_created: "A task that was deleted mid-flight"
+
+2026-05-20 10:00:00  dev@example.com  FP-child003
+  dependencies: added child001
+
+2026-05-05 10:00:00  dev@example.com  FP-child003
+  issue_created: "Ship it (blocked on c1)"
+
+2026-05-04 10:00:00  dev@example.com  FP-child002
+  issue_created: "Write the docs"
+
+2026-05-03 10:00:00  dev@example.com  FP-child001
+  issue_created: "Implement the widget"
+
+2026-05-01 10:00:00  dev@example.com  FP-epic0001
+  issue_created: "Smoke fixture epic"
+
+2026-04-15 10:00:00  dev@example.com  FP-defr0001
+  status: todo → deferred
+
+2026-04-10 10:00:00  dev@example.com  FP-rejd0001
+  status: todo → rejected
+
+2026-04-02 10:00:00  dev@example.com  FP-rejd0001
+  issue_created: "A rejected proposal"
+
+2026-04-01 10:00:00  dev@example.com  FP-defr0001
+  issue_created: "A deferred idea"

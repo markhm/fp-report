@@ -25,6 +25,8 @@ render(){ local out="$1" iss="$2" conf="${3:-}"
   if [ -n "$conf" ]; then "$ENGINE" -c "$conf" --issues-file "$iss" -o "$out" --no-open >/dev/null 2>&1
   else "$ENGINE" --issues-file "$iss" -o "$out" --no-open >/dev/null 2>&1; fi
 }
+# render_h <out> <issues> <log> <conf> — same, plus a saved 'fp log' transcript to replay
+render_h(){ "$ENGINE" -c "$4" --issues-file "$2" --history-file "$3" -o "$1" --no-open >/dev/null 2>&1; }
 # mkconf <file> <lines...> — write a conf; STATUS/THEME default to the repo defaults
 mkconf(){ local f="$1"; shift; : >"$f"; printf '%s\n' "$@" >>"$f"
   grep -q '^STATUS_FILE=' "$f" || echo "STATUS_FILE=\"$ROOT/defaults/fp-report.status.json\"" >>"$f"
@@ -62,6 +64,8 @@ inline_include(){
 th(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_themes.js" "$@"; }
 # orph <html> <check> [args…] — assert on orphan detection in the rendered report (same skip)
 orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orphans.js" "$@"; }
+# tr <html> <check> [args…] — assert on the cumulative-flow replay (same skip)
+tr(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_trends.js" "$@"; }
 
 echo "fp-report test suite"
 
@@ -70,7 +74,7 @@ BASE="$TMP/base.html"
 mkconf "$TMP/base.conf" 'FP_PREFIX="FP"' 'PROJECT_NAME="proj"' 'APP_NAME="proj"'
 render "$BASE" "$FIX" "$TMP/base.conf"
 t "renders output"                         test -s "$BASE"
-t "no unreplaced __PLACEHOLDER__"          bash -c '! grep -oE "__(FP_DATA|STATUS_CONFIG|THEMES_CONFIG|THEME_CSS|LOGO_LIGHT|LOGO_DARK|ID_PREFIX|PROJECT_NAME|APP_NAME|REPORT_TITLE|GENERATED_AT)__" "'"$BASE"'" | grep -q .'
+t "no unreplaced __PLACEHOLDER__"          bash -c '! grep -oE "__(FP_DATA|STATUS_CONFIG|THEMES_CONFIG|FP_HISTORY|THEME_CSS|LOGO_LIGHT|LOGO_DARK|ID_PREFIX|PROJECT_NAME|APP_NAME|REPORT_TITLE|GENERATED_AT)__" "'"$BASE"'" | grep -q .'
 t "injected app JS parses"                 jsparse "$BASE"
 t "exactly two </script> (no data breakout)" bash -c '[ "$(grep -c "</script>" "'"$BASE"'")" -eq 2 ]'
 
@@ -83,8 +87,8 @@ t "one blocked issue (unmet dep)"          python3 "$ROOT/test/assert_model.py" 
 t "output is still ONE html file"          test -f "$BASE"
 t "no include directive survives"          bash -c '! grep -q "#include" "'"$BASE"'"'
 t "still exactly one <script> block"       bash -c '[ "$(grep -c "^<script>$" "'"$BASE"'")" -eq 1 ]'
-t "CSS from every style part is present"   bash -c 'for sel in "box-sizing:border-box" ".tiles{" ".brow{" "max-width:480px"; do grep -q "$sel" "'"$BASE"'" || exit 1; done'
-t "JS from every app part is present"      bash -c 'for fn in "renderTable" "renderThemes" "runSearch" "distBars" "childRow" "orphanGroups" "showPanel"; do grep -q "$fn" "'"$BASE"'" || exit 1; done'
+t "CSS from every style part is present"   bash -c 'for sel in "box-sizing:border-box" ".tiles{" ".brow{" ".bandgap{" "max-width:480px"; do grep -q "$sel" "'"$BASE"'" || exit 1; done'
+t "JS from every app part is present"      bash -c 'for fn in "renderTable" "renderThemes" "runSearch" "distBars" "childRow" "orphanGroups" "renderTrends" "showPanel"; do grep -q "$fn" "'"$BASE"'" || exit 1; done'
 t "a missing include fails loudly"         bad_include
 t "an inline include never ships silently"  inline_include
 
@@ -146,6 +150,56 @@ t "child of a live epic is fine"             orph "$ORPH" is kept0002 no
 t "nested under an open orphan isn't one"    orph "$ORPH" is nest0001 no
 t "the stranded work is listed by id"        orph "$ORPH" html "orph0001"
 t "orphan JS parses"                         jsparse "$ORPH"
+
+# ---- trends: the status-over-time replay, rebuilt from 'fp log' ----
+# Without a log there is nothing to replay, so the tab must remove itself rather than
+# ship an empty chart (the baseline render passes no --history-file).
+t "no history → empty event list injected"   grep -q '"events":\[\]' "$BASE"
+t "…and the panel still ships (JS hides it)" grep -q 'id="panel-trends"' "$BASE"
+TRD="$TMP/trends.html"
+render_h "$TRD" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/base.conf"
+t "history fixture renders"                  test -s "$TRD"
+t "trends JS parses"                         jsparse "$TRD"
+t "Trends tab sits after Orphans"            bash -c '[ "$(grep -n "data-panel=\"panel-orphans\"" "'"$TRD"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-trends\"" "'"$TRD"'" | head -1 | cut -d: -f1)" ]'
+# the parser reads 'fp log' text: 17 of the fixture's 19 events are ones we model
+# (8 status + 8 created + 1 deleted); the comment and dependencies rows are ignored
+# rather than guessed at, so a comment body can never be read as a transition
+t "parses the fp log transcript"             tr "$TRD" events 17
+# bands are stacked in the order the registry declares, which was chosen so no two
+# touching bands collide under colour-vision deficiency
+t "stack order comes from the registry"      tr "$TRD" stack "done,deferred,rejected,selected,in-progress,todo"
+# the whole point: an issue's PAST status, not its current one back-dated. child001 is
+# in-progress today but was created as todo — the log's first transition proves it.
+t "initial status from the first transition" tr "$TRD" initial child001 todo
+t "…and it walks through every segment"      tr "$TRD" segs child001 3
+t "never-moved issue keeps its status"       tr "$TRD" initial epic0001 todo
+t "backfilled day is todo, not in-progress"  tr "$TRD" count 2026-05-10 todo 4
+t "…and by June it had moved to selected"    tr "$TRD" count 2026-06-11 selected 1
+t "counts a status mid-replay"               tr "$TRD" count 2026-06-11 in-progress 2
+t "…and the backlog behind it"               tr "$TRD" count 2026-06-11 todo 3
+t "terminal states persist once reached"     tr "$TRD" count 2026-06-11 rejected 1
+t "issue predating the log enters at create" tr "$TRD" count 2026-04-05 todo 2
+# a deleted issue existed and was worked on — it counts for its span and then stops
+t "deleted issue counts while it existed"    tr "$TRD" total 2026-06-11 8
+t "…and drops out after deletion"            tr "$TRD" total 2026-06-20 7
+t "…its timeline is closed, not open-ended"  tr "$TRD" ends gone0001 closed
+t "a live issue's timeline runs to today"    tr "$TRD" ends child001 open
+# the replay must land exactly on the live snapshot, or the chart contradicts the
+# dashboard's "By status" bars sitting a few hundred pixels above it
+t "today reconciles: todo"                   tr "$TRD" today todo 2
+t "today reconciles: in-progress"            tr "$TRD" today in-progress 1
+t "today reconciles: selected"               tr "$TRD" today selected 1
+t "today reconciles: done"                   tr "$TRD" today done 1
+t "today reconciles: deferred"               tr "$TRD" today deferred 1
+t "today reconciles: rejected"               tr "$TRD" today rejected 1
+t "no unrecorded live status to reconcile"   tr "$TRD" stat mismatched 0
+t "one deleted issue accounted for"          tr "$TRD" stat deleted 1
+# --no-history must win over a conf that asks for it
+NH="$TMP/nohist.html"; mkconf "$TMP/nh.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"'
+"$ENGINE" -c "$TMP/nh.conf" --issues-file "$FIX" --history-file "$ROOT/test/fixture.history.txt" \
+  --no-history -o "$NH" --no-open >/dev/null 2>&1
+t "--no-history still renders"               test -s "$NH"
+t "…and collects no history at all"          grep -q '"events":\[\]' "$NH"
 
 # ---- prefix ----
 t "default prefix renders IDP=FP"          grep -q 'const IDP = "FP"' "$BASE"

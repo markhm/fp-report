@@ -11,6 +11,8 @@
 #   fp-report --issues-file J  # render JSON J instead of calling fp (offline/CI)
 #   fp-report --no-labels      # skip the per-issue label fetch (faster, no themes from labels)
 #   fp-report --refresh-labels # ignore the label cache and re-fetch every issue
+#   fp-report --no-history     # skip the 'fp log' replay (drops the Trends tab)
+#   fp-report --history-file L # replay this saved 'fp log' output (offline/CI)
 #
 # The engine + HTML template live once (this folder). Each project supplies its own
 # fp-report.conf + fp-report.status.json + logos. The config is located, in order:
@@ -116,7 +118,7 @@ EOF
 main() {
     # ---- args ----
     DO_OPEN=true; CONF_ARG=""; OUT_OVERRIDE=""; ISSUES_FILE=""; INIT=false; THEME_ARG=""
-    LABELS_ARG=""; REFRESH_LABELS=false
+    LABELS_ARG=""; REFRESH_LABELS=false; HISTORY_ARG=""; HISTORY_FILE=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --no-open)     DO_OPEN=false ;;
@@ -126,10 +128,13 @@ main() {
             --no-labels)   LABELS_ARG=false ;;      # skip the per-issue property fetch
             --labels)      LABELS_ARG=true ;;
             --refresh-labels) REFRESH_LABELS=true ;;   # ignore the cache, re-fetch everything
+            --no-history)  HISTORY_ARG=false ;;     # skip the 'fp log' replay
+            --history)     HISTORY_ARG=true ;;
+            --history-file) shift; HISTORY_FILE="$1" ;; # replay saved 'fp log' text (offline/CI)
             -c|--config)   shift; CONF_ARG="$1" ;;
             -o|--out)      shift; OUT_OVERRIDE="$1" ;;
             --issues-file) shift; ISSUES_FILE="$1" ;;   # render this JSON instead of calling fp (offline/CI)
-            -h|--help)     sed -n '2,22p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            -h|--help)     sed -n '2,24p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
             *) echo "Unknown arg: $1" >&2; exit 2 ;;
         esac
         shift
@@ -162,6 +167,8 @@ main() {
     FETCH_LABELS=true                              # enrich the backlog with each issue's labels
     LABEL_CACHE=""                                 # empty → OUTPUT_DIR/.fp-report.labels.json
     LABEL_JOBS=12                                  # parallel 'fp issue show' calls
+    FETCH_HISTORY=true                             # replay 'fp log' for the Trends tab
+    HISTORY_LIMIT=200000                           # 'fp log --limit' — big enough to mean "everything"
     # shellcheck source=/dev/null
     . "$CONF"
     [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
@@ -195,8 +202,8 @@ main() {
 
     # Pull the full backlog as JSON. Run fp from the conf's dir so it walks up to the
     # project's .fp/ (each project's config anchors us in the right repo).
-    TMP_JSON="$(mktemp)"
-    trap 'rm -f "$TMP_JSON"' EXIT
+    TMP_JSON="$(mktemp)"; TMP_LOG="$(mktemp)"; TMP_HIST="$(mktemp)"
+    trap 'rm -f "$TMP_JSON" "$TMP_LOG" "$TMP_HIST"' EXIT
     if [ -n "$ISSUES_FILE" ]; then
         cp "$ISSUES_FILE" "$TMP_JSON"                                   # offline/CI: skip fp
     else
@@ -264,6 +271,76 @@ except OSError as e:
 PY
     fi
 
+    # ---- history: replay every status transition (the Trends tab) ----
+    # The issue list is a SNAPSHOT — it can say what is in progress now, never what was in
+    # progress in May. 'fp log' is the only record of the past: it carries every
+    # "status: A → B", issue_created and issue_deleted since the project began, so the
+    # trend line is a replay of what actually happened rather than a guess interpolated
+    # from createdAt/updatedAt. We ask for -a (all events) so a future reclassification of
+    # "low-signal" can't silently drop status changes; the parser ignores what it doesn't need.
+    [ -z "$HISTORY_ARG" ] || FETCH_HISTORY="$HISTORY_ARG"
+    printf '{"events":[],"reason":"not collected"}' > "$TMP_HIST"
+    HAVE_LOG=false
+    if [ "$FETCH_HISTORY" != true ]; then
+        :                                                         # --no-history / FETCH_HISTORY="false" wins
+    elif [ -n "$HISTORY_FILE" ]; then
+        cp "$HISTORY_FILE" "$TMP_LOG" && HAVE_LOG=true            # offline/CI: saved 'fp log' text
+    elif [ -n "$ISSUES_FILE" ]; then
+        :                                                         # offline render: never call fp
+    elif command -v fp >/dev/null 2>&1; then
+        if ( cd "$CONF_DIR" && fp log -a --limit "$HISTORY_LIMIT" ) > "$TMP_LOG" 2>/dev/null; then
+            HAVE_LOG=true
+        else
+            echo "  (fp log failed — Trends tab omitted)" >&2
+        fi
+    fi
+    if [ "$HAVE_LOG" = true ]; then
+        LOG="$TMP_LOG" OUT_HIST="$TMP_HIST" python3 - <<'PY'
+import calendar, json, os, re
+
+# 'fp log' prints an event as a header line plus one indented detail line:
+#     2026-08-03 05:19:38  someone@example.com  MC-oehcfgmr
+#       status: in-progress → done
+# Timestamps are UTC despite carrying no zone marker (verified against updatedAt, which
+# is ISO-Z). Anything that doesn't match is skipped rather than guessed at, so a comment
+# body or a future event type can never be mistaken for a transition.
+HEAD = re.compile(r'^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\s+\S+\s+(\S+)\s*$')
+DETAIL = re.compile(r'^\s\s+([a-z_]+):\s*(.*)$')
+ARROW = re.compile(r'\s*(?:→|->)\s*')
+
+events, cur = [], None
+with open(os.environ["LOG"], encoding="utf-8", errors="replace") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        m = HEAD.match(line)
+        if m:
+            y, mo, d, H, M, S, ref = m.groups()
+            ts = calendar.timegm((int(y), int(mo), int(d), int(H), int(M), int(S), 0, 0, 0))
+            # the log shows PREFIX-shortId; the report keys on shortId alone
+            cur = (ts, ref.split("-", 1)[1] if "-" in ref else ref)
+            continue
+        if cur is None:
+            continue
+        m = DETAIL.match(line)
+        if not m:
+            continue
+        field, rest = m.groups()
+        ts, sid = cur
+        if field == "status":
+            parts = ARROW.split(rest.strip(), maxsplit=1)
+            if len(parts) == 2 and parts[0] and parts[1]:
+                events.append(["s", ts, sid, parts[0], parts[1]])
+        elif field == "issue_created":
+            events.append(["c", ts, sid])
+        elif field == "issue_deleted":
+            events.append(["d", ts, sid])
+
+events.sort(key=lambda e: e[1])
+with open(os.environ["OUT_HIST"], "w", encoding="utf-8") as fh:
+    json.dump({"events": events}, fh, separators=(",", ":"))
+PY
+    fi
+
     GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
     # Inject data + settings + logos into the template. Python for robust replacement and
@@ -272,7 +349,7 @@ PY
     TEMPLATE="$TEMPLATE" OUT="$OUT" JSON="$TMP_JSON" GENERATED_AT="$GENERATED_AT" \
     FP_PREFIX="$FP_PREFIX" PROJECT_NAME="$PROJECT_NAME" APP_NAME="$APP_NAME" REPORT_TITLE="$REPORT_TITLE" \
     LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
-    THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" python3 - <<'PY'
+    THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" python3 - <<'PY'
 import os, re, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -313,10 +390,15 @@ data = open(os.environ["JSON"], encoding="utf-8").read().strip().replace("<", "\
 status = json.dumps(json.load(open(os.environ["STATUS_PATH"], encoding="utf-8"))).replace("<", "\\u003c")
 # Same for the theme taxonomy (keyword regexes + colours for the Themes tiles page).
 themes = json.dumps(json.load(open(os.environ["THEMES_PATH"], encoding="utf-8"))).replace("<", "\\u003c")
+# Parsed 'fp log' replay (status transitions over time) for the Trends tab. Always valid
+# JSON — an empty events list is the documented "no history" state, not an error.
+history = json.dumps(json.load(open(os.environ["HIST_PATH"], encoding="utf-8")),
+                     separators=(",", ":")).replace("<", "\\u003c")
 theme = open(os.environ["THEME_PATH"], encoding="utf-8").read().rstrip("\n")   # raw CSS custom properties
 html = (tpl.replace("__FP_DATA__", data)
            .replace("__STATUS_CONFIG__", status)
            .replace("__THEMES_CONFIG__", themes)
+           .replace("__FP_HISTORY__", history)
            .replace("__THEME_CSS__", theme)
            .replace("__GENERATED_AT__", os.environ["GENERATED_AT"])
            .replace("__ID_PREFIX__", os.environ["FP_PREFIX"])

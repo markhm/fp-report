@@ -11,6 +11,7 @@ __THEME_CSS__
 <!--#include styles/base.css -->
 <!--#include styles/tiles.css -->
 <!--#include styles/components.css -->
+<!--#include styles/chart.css -->
 <!--#include styles/mobile.css -->
 </style>
 </head>
@@ -55,6 +56,7 @@ __THEME_CSS__
     <button class="tab" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
     <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
     <button class="tab" data-panel="panel-orphans" type="button">Orphans <span class="n" id="tabOrphansN"></span></button>
+    <button class="tab" data-panel="panel-trends" type="button">Trends <span class="n" id="tabTrendsN"></span></button>
     <label class="chk"><input type="checkbox" id="hideDone" checked> hide done</label>
   </nav>
 
@@ -101,6 +103,18 @@ __THEME_CSS__
     <section class="card" id="orphans"></section>
     <div class="tile-src" id="orphanRule" style="margin-top:10px"></div>
   </div>
+
+  <div class="panel" id="panel-trends" hidden>
+    <h2>Trends <span class="sub" style="text-transform:none;letter-spacing:0">— how many issues sat in each status, day by day, replayed from the activity log · band thickness is the queue at that stage · click a status to add or drop its band</span></h2>
+    <div class="trend-controls" id="trendControls"></div>
+    <section class="card chartcard">
+      <div class="chartwrap" id="trendChart"></div>
+      <div class="ttip" id="trendTip" role="status" aria-live="polite"></div>
+      <div class="tlegend" id="trendLegend"></div>
+    </section>
+    <div id="trendTable" hidden></div>
+    <div class="tile-src trend-note" id="trendNote"></div>
+  </div>
   </main>
 
   <footer id="foot"></footer>
@@ -116,6 +130,7 @@ __THEME_CSS__
 <!--#include app/table.js -->
 <!--#include app/themes.js -->
 <!--#include app/deps.js -->
+<!--#include app/trends.js -->
 <!--#include app/ui.js -->
 </script>
 </body>

@@ -1,11 +1,12 @@
 {
   "_comment": "Default fp status registry (fp's built-in statuses). Copy + edit per project to mirror .fp/extensions/workflow.ts. Order = display + sort order. role: open=active work, done=terminal complete, rejected=terminal won't-do (both done+rejected satisfy a dependency); any other role (e.g. deferred) is neither open nor satisfying. color: a semantic name (neutral/grey/blue/indigo/purple/teal/mint/green/amber/orange/red) or a raw #hex / var(--x).",
+  "_stack_comment": "stack = bottom-to-top band order in the Trends chart (0 = the base). Optional: a registry without it falls back to terminal states at the base in registry order, then open statuses most-advanced-first. The order below is NOT that fallback — it is the fallback with in-progress and selected swapped, because the fallback puts in-progress (ochre) directly above rejected (orange): OKLab dE 1.4 under deutan and 9.0 even for normal vision, i.e. two touching bands nobody can separate. Swapping the one pair clears every adjacent pair to dE >= 12.9 in BOTH light and dark. Re-validate with the dataviz palette validator if you recolour these.",
   "statuses": [
-    { "key": "todo",        "label": "Backlog",     "color": "neutral", "role": "open" },
-    { "key": "selected",    "label": "Selected",    "color": "indigo",  "role": "open" },
-    { "key": "in-progress", "label": "In Progress", "color": "blue",    "role": "open" },
-    { "key": "done",        "label": "Done",        "color": "green",   "role": "done" },
-    { "key": "deferred",    "label": "Deferred",    "color": "grey",    "role": "deferred" },
-    { "key": "rejected",    "label": "Rejected",    "color": "orange",  "role": "rejected" }
+    { "key": "todo",        "label": "Backlog",     "color": "neutral", "role": "open",     "stack": 5 },
+    { "key": "selected",    "label": "Selected",    "color": "indigo",  "role": "open",     "stack": 3 },
+    { "key": "in-progress", "label": "In Progress", "color": "blue",    "role": "open",     "stack": 4 },
+    { "key": "done",        "label": "Done",        "color": "green",   "role": "done",     "stack": 0 },
+    { "key": "deferred",    "label": "Deferred",    "color": "grey",    "role": "deferred", "stack": 1 },
+    { "key": "rejected",    "label": "Rejected",    "color": "orange",  "role": "rejected", "stack": 2 }
   ]
 }
