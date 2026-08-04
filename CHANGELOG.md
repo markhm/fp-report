@@ -30,6 +30,32 @@ template, or tooling — not the issue data a given report happens to show.
   chart says so and counts them. Tunable by de-selecting status bands in the legend and by
   narrowing to a theme, plus 30d/90d/All ranges and a table view. New `FETCH_HISTORY` conf
   key, `--no-history` and `--history-file` flags; with no history the tab removes itself.
+  The tab-bar `hide done` toggle scopes the chart too — with the done band in the stack it
+  is most of the height on a mature backlog and the live queue collapses to hairlines. It
+  seeds the same per-band state the legend chips drive, so a switched-off status stays
+  listed and struck through rather than vanishing: a missing chip reads as "this project
+  has no done column", not as "that band is off". A status that appears only in history (a
+  renamed workflow stage) is kept in that view — dropping it would silently delete real
+  work — and is drawn as a 45° hatch in neutral ink, because its only available fallback
+  colour collides with whatever the registry calls `neutral`. Gridlines round the *step*
+  rather than the ceiling, so an axis reads 0/300/600/900/1200 instead of 0/375/750/1125.
+- **Flow tab** (after Trends) — the derivative of the cumulative flow, as a diverging
+  column chart: Opened above the zero line, Completed and Dropped stacked below it, and a
+  net-change line over the top. Bucket by day, ISO week or calendar month (UTC). Completed
+  and Dropped stay separate because a rejected or deferred issue left the backlog without
+  being delivered, and counting it as "solved" would flatter throughput. Everything is
+  counted net — a reopen is a negative completion in its period — which makes three
+  identities hold exactly against the live backlog (opened − left == tracked, completed ==
+  done, dropped == terminal-not-done); all three are asserted in the suite. The palette is
+  settled by pairlist rather than by forcing a hue: no triple of theme tokens clears the
+  gates alongside green, so Opened↔Dropped is carried by direction (above/below the axis)
+  plus ▲/▼ glyphs in the legend, while the two pairs that actually touch both pass.
+- **`REPORTS_INCLUDED`** — pick which tabs to build, space- or comma-separated and
+  case-insensitive (`"Themes Epics Issues"`); unset builds all six. Excluded tabs are
+  hidden and the first survivor becomes the landing page. Dropping both Trends and Flow
+  skips the `fp log` call entirely, which is the actual saving — page weight is dominated
+  by the issue JSON every tab shares, so this is a "which views do I want" switch rather
+  than a size optimisation.
 - **`stack` in the status registry** — bottom-to-top band order for the Trends chart. This
   is a colour decision, not a cosmetic one: the natural cumulative-flow order puts
   `in-progress` (ochre) directly above `rejected` (orange) in the shipped palette, at

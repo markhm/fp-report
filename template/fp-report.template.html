@@ -57,6 +57,7 @@ __THEME_CSS__
     <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
     <button class="tab" data-panel="panel-orphans" type="button">Orphans <span class="n" id="tabOrphansN"></span></button>
     <button class="tab" data-panel="panel-trends" type="button">Trends <span class="n" id="tabTrendsN"></span></button>
+    <button class="tab" data-panel="panel-flow" type="button">Flow <span class="n" id="tabFlowN"></span></button>
     <label class="chk"><input type="checkbox" id="hideDone" checked> hide done</label>
   </nav>
 
@@ -115,6 +116,18 @@ __THEME_CSS__
     <div id="trendTable" hidden></div>
     <div class="tile-src trend-note" id="trendNote"></div>
   </div>
+
+  <div class="panel" id="panel-flow" hidden>
+    <h2>Flow <span class="sub" style="text-transform:none;letter-spacing:0">— issues opened against issues closed, per period · above the line is work arriving, below it is work leaving · completed and dropped are counted apart, so nothing rejected is reported as solved</span></h2>
+    <div class="trend-controls" id="flowControls"></div>
+    <section class="card chartcard">
+      <div class="chartwrap" id="flowChart"></div>
+      <div class="ttip" id="flowTip" role="status" aria-live="polite"></div>
+      <div class="tlegend" id="flowLegend"></div>
+    </section>
+    <div id="flowTable" hidden></div>
+    <div class="tile-src trend-note" id="flowNote"></div>
+  </div>
   </main>
 
   <footer id="foot"></footer>
@@ -131,6 +144,7 @@ __THEME_CSS__
 <!--#include app/themes.js -->
 <!--#include app/deps.js -->
 <!--#include app/trends.js -->
+<!--#include app/flow.js -->
 <!--#include app/ui.js -->
 </script>
 </body>

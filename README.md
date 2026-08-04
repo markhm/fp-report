@@ -60,8 +60,9 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `THEMES_FILE` | theme taxonomy for the Themes tab (see below) |
 | `FETCH_LABELS` | fetch each issue's labels (default `true`; see below) |
 | `LABEL_CACHE` / `LABEL_JOBS` | label cache path / parallel fetches (defaults are fine) |
-| `FETCH_HISTORY` | replay `fp log` for the Trends tab (default `true`; see below) |
+| `FETCH_HISTORY` | replay `fp log` for the Trends/Flow tabs (default `true`; see below) |
 | `HISTORY_LIMIT` | `fp log --limit` (default `200000` — i.e. "everything") |
+| `REPORTS_INCLUDED` | which tabs to build (default: all; see below) |
 | `THEME_FILE` | colour theme (see below) |
 | `LOGO_LIGHT` / `LOGO_DARK` | brand wordmarks (light / dark theme); omit → neutral default |
 | `OUTPUT_DIR` / `OUTPUT_FILE` | where the HTML lands (default `../reports/fp-report.html`) |
@@ -275,8 +276,22 @@ what you are looking at is replayed and how much is assumed.
 
 ### Tuning it
 
+- **`hide done`** (the tab-bar checkbox, ticked by default) switches off every terminal
+  status, exactly as it does on the Themes tiles and for the same reason: on a backlog
+  that is three-quarters complete the done band is most of the height and the live queue
+  underneath it collapses into unreadable hairlines. It *seeds the same per-band state the
+  chips drive*, so those statuses stay listed in the legend, struck through — a chip that
+  disappeared would be indistinguishable from "this project has no done column". Untick
+  it, or click the chip, to bring the completion base back.
 - **Status bands** — click any legend chip to drop or restore its band. De-selected chips
   hollow the swatch and strike the label, so "off" never depends on colour alone.
+- **Retired statuses** — a status that appears only in history (a stage the workflow has
+  since renamed) has no role to test, so it is kept rather than dropped: deleting real
+  work from the chart is the worse failure. It has no registry colour either, and the
+  obvious fallback collides with whatever the registry calls `neutral`, so it carries the
+  difference on the **texture** channel instead — same neutral ink, 45° hatch, labelled
+  `· retired`. That survives greyscale and colour-vision deficiency, and cannot collide
+  with a hue in a palette this tool has never seen.
 - **Themes** — the same facets as the Themes tab. Picking one narrows the population the
   chart counts; `All` resets. (Deleted issues leave the chart while a theme filter is on:
   there is no row left to classify them with, and the note says so.)
@@ -306,6 +321,73 @@ field; add it to get the validated order.
 Set `FETCH_HISTORY="false"` (or pass `--no-history`) to skip the `fp log` call — one extra
 call per run, ~0.5s on a 1000-issue project. Without history there is nothing to replay, so
 the tab removes itself and the rest of the report is unaffected.
+
+## Flow — the derivative of the trend
+
+Trends answers *how much sat where*. **Flow** answers *how much moved, and when*: the
+same replay differentiated, as a diverging column chart.
+
+- **Opened** rises above the zero line — issues created in that period.
+- **Completed** and **Dropped** fall below it, stacked. They are counted **separately on
+  purpose**: an issue that was rejected or deferred left the backlog without being
+  delivered, and folding it into "solved" would flatter throughput.
+- **Net change** rides over the bars as a line — opened minus closed, i.e. whether the
+  backlog grew or shrank that period.
+
+Bucket by **Day / Week / Month** (weeks are ISO, starting Monday, in UTC; months are
+calendar months). Range and theme filters are shared with Trends.
+
+### The numbers reconcile, by construction
+
+Everything is counted **net** — a reopened issue is a negative completion in its period, and
+an issue that leaves the backlog hands back whatever it was last counted as. That is what
+makes these three identities hold exactly, and they are asserted in the test suite:
+
+```
+sum(opened) − sum(left the backlog)  ==  issues tracked today
+sum(completed)                       ==  issues in a done status today
+sum(dropped)                         ==  issues in a terminal non-done status today
+```
+
+On maintainability-cloud that is 1,139 opened − 27 left = 1,112 tracked, 792 completed, 68
+dropped — every one matching the live backlog. A flow chart that doesn't add up to the
+backlog it describes is decoration.
+
+### Why the colours are what they are
+
+Opened is indigo, Completed green, Dropped grey. **No triple of this theme's tokens clears
+the colour gates alongside green** — the dark theme's greys are lavender, so every cool
+"opened" collides with a grey "dropped", and every warm one collides with green under
+colour-vision deficiency. Rather than force a hue, the fix is to be honest about which
+pairs actually touch:
+
+- **Completed ↔ Dropped** are stacked and adjacent → ΔE 13.9 light, 16.3 dark. Passes.
+- **Opened ↔ Completed** meet across the zero line → ΔE 20.6 / 19.5. Passes.
+- **Opened ↔ Dropped** are never told apart by hue at all. They sit on opposite sides of
+  the axis, and the legend marks them ▲ / ▼. Direction is the encoding.
+
+## Choosing which tabs to build (`REPORTS_INCLUDED`)
+
+```sh
+REPORTS_INCLUDED="Themes Epics Issues"        # space- or comma-separated, case-insensitive
+```
+
+Unset (the default) builds all six: `Themes Epics Issues Orphans Trends Flow`. An
+unknown name is reported on stderr and ignored rather than failing the run. Excluded tabs
+are hidden and the first surviving tab becomes the landing page, so the report never opens
+on a blank panel.
+
+Two things worth being straight about:
+
+- **Excluding the two history tabs saves real weight; excluding the others saves almost
+  none.** Drop *both* Trends and Flow and the engine skips the `fp log` call **and** the
+  event payload it embeds — on maintainability-cloud that is 97 KB raw / 24 KB gzipped,
+  about 4% of the file, plus ~0.5s of generation. Excluding Themes, Epics, Issues or
+  Orphans saves only their (hidden) markup: the page's weight is the issue JSON that every
+  tab shares.
+- **Excluded sections are hidden, not stripped.** Their markup stays in the DOM so every
+  render path can keep writing into it unconditionally. That keeps this feature from
+  touching anything else, at the cost of a few hundred bytes of hidden markup.
 
 ## Deploy (publish to a static site)
 
@@ -365,7 +447,7 @@ fp-report-deploy.sh     publish the rendered report to a static-site repo
 template/               the report, authored as parts and assembled at render time
   fp-report.template.html   the shell: page markup + include directives
   styles/*.css              base · tiles · components · chart · mobile
-  app/*.js                  model · kpis · epics · orphans · table · themes · deps · trends · ui
+  app/*.js                  model · kpis · epics · orphans · table · themes · deps · trends · flow · ui
 defaults/               reference config, status registry, theme taxonomy, themes, logos
 tools/                  install.sh, export.sh
 test/                   run.sh + fixtures + assertion helpers
@@ -422,7 +504,10 @@ invariants, epic/leaf separation, and epic-scoped priority — the orphan rule, 
 every near-miss it must *not* flag, and the Trends replay: parsing `fp log` text, initial
 status taken from the first transition rather than back-dating the current one, deleted
 issues counted only for the span they existed, and — the one that matters most — that the
-replay's final day reconciles **exactly** with the live snapshot, status for status.
+replay's final day reconciles **exactly** with the live snapshot, status for status. Flow
+adds its own three reconciliation identities (opened/completed/dropped against today's
+backlog), UTC bucket edges for day/ISO-week/month, and `REPORTS_INCLUDED` gating including
+that excluding both history tabs really does skip the `fp log` call.
 
 **Adding a test.** `run.sh` is a flat script of one-line assertions; `t "<description>"
 <command…>` passes if the command exits 0. A few helpers do the heavy lifting:
@@ -435,6 +520,7 @@ replay's final day reconciles **exactly** with the live snapshot, status for sta
 | `th <html> <check> [args…]` | the Themes model — see `test/assert_themes.js` for the checks |
 | `orph <html> <check> [args…]` | the orphan rule — see `test/assert_orphans.js` for the checks |
 | `tr <html> <check> [args…]` | the Trends replay — see `test/assert_trends.js` for the checks |
+| `flow <html> <check> [args…]` | the Flow derivative — see `test/assert_flow.js` for the checks |
 
 The `assert_*.js` helpers share `test/dom-stub.js`, which evaluates the report's **real**
 injected script against a minimal DOM stub — so assertions exercise the shipped code

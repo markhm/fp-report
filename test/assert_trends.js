@@ -12,13 +12,15 @@
  *     events  <n>                        activity-log events parsed out of `fp log`
  *     stack   <a,b,c…>                   band order, bottom → top
  *     stat    <key> <n>                  a TREND_STATS reconciliation counter
+ *     base    <hidedone|showdone> <a,b…> bands in play for that "hide done" setting
+ *     axis    <peak> <yMax>              gridline ceiling chosen for a given peak
  *
  * Evaluates the report's REAL injected script against the shared DOM stub, so the
  * assertions exercise the shipped replay rather than a copy of it.
  * Exits 0 on pass, 1 on mismatch.
  */
 const [html_path, check, ...args] = process.argv.slice(2);
-const { app } = require("./dom-stub")(html_path);
+const { app, nodes } = require("./dom-stub")(html_path);
 
 global.__r = null;
 eval(app + `
@@ -60,6 +62,19 @@ eval(app + `
     __r = eq(STACK_ORDER.join(","), A[0], "stack order");
   } else if (CHECK === "stat") {
     __r = eq(TREND_STATS[A[0]], A[1], "TREND_STATS." + A[0]);
+  } else if (CHECK === "base") {
+    setHideDone(A[0] === "hidedone");
+    __r = eq(visibleBands().join(","), A[1], "bands with " + A[0]);
+  } else if (CHECK === "legend") {
+    // every status stays listed whatever is hidden — a chip that vanishes reads as
+    // missing data rather than as a switched-off band
+    setHideDone(A[0] === "hidedone");
+    renderTrends();
+    const chips = (nodes.trendLegend.innerHTML.match(/data-status="([^"]+)"/g) || [])
+      .map(m => m.replace(/.*="|"$/g, ""));
+    __r = eq(chips.join(","), A[1], "legend chips with " + A[0]);
+  } else if (CHECK === "axis") {
+    __r = eq(niceAxis(Number(A[0])), A[1], "axis ceiling for peak " + A[0]);
   } else {
     __r = { ok: false, msg: "unknown check: " + CHECK };
   }

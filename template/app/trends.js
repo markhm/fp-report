@@ -27,7 +27,15 @@ const STACK_ORDER = (()=>{
 const HIST_STATUSES = [...new Set(HIST.filter(e=>e[0]==="s").flatMap(e=>[e[3],e[4]]))]
   .filter(s=>!STACK_ORDER.includes(s));
 const TREND_KEYS = [...STACK_ORDER, ...HIST_STATUSES];
-const trendMeta = s => STATUS_META[s] || {label:s, color:"var(--muted)"};
+const RETIRED = new Set(HIST_STATUSES);
+// A retired status has no colour in the registry, and the obvious fallback (--muted) is
+// usually already taken by whatever the registry calls "neutral" — up-data-tools drew
+// `todo` and `Backlog` as two identical grey bands. Rather than invent a hue that might
+// collide with something else in a palette we cannot see, carry the difference on the
+// texture channel: same neutral ink, 45° hatch, which survives greyscale and CVD alike.
+const trendMeta = s => STATUS_META[s]
+  || {label:s + " · retired", color:"var(--muted)", retired:true};
+const bandFill = s => RETIRED.has(s) ? "url(#trRetired)" : trendMeta(s).color;
 
 const DAY_START = ts => Date.UTC(new Date(ts).getUTCFullYear(), new Date(ts).getUTCMonth(),
                                 new Date(ts).getUTCDate());
@@ -145,12 +153,37 @@ function visibleTimelines(){
 // ---- chart ----
 const fmtDay = (d, withYear) => d.toLocaleDateString(undefined,
   Object.assign({timeZone:"UTC", month:"short", day:"numeric"}, withYear?{year:"numeric"}:{}));
-function niceMax(v){
-  if(v <= 5) return 5;
-  const p = Math.pow(10, Math.floor(Math.log10(v)));
-  for(const m of [1,1.5,2,2.5,5,10]) if(m*p >= v) return m*p;
-  return 10*p;
+// Round the GRIDLINE STEP, not the ceiling: picking a nice ceiling and dividing it by 4
+// is what produces axes labelled 375 / 750 / 1125. Rounding the step up instead lands
+// every gridline on a round number and stops the plot carrying dead headroom.
+const Y_STEPS = 4;
+function niceAxis(v){
+  const raw = Math.max(1, v/Y_STEPS);
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  let step = 10*p;
+  for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]) if(m*p >= raw){ step = m*p; break; }
+  // issue counts are integers: a 1.5 or 2.5 step would label two gridlines "2" and "3"
+  // twice over once rounded for display
+  if(step < 10) step = Math.ceil(step);
+  return step*Y_STEPS;
 }
+// Which bands are in play. "hide done" (the tab-bar toggle) drops every terminal status,
+// exactly as it does on the Themes tiles — and for the same reason: on a backlog that is
+// three-quarters complete the done band is 70% of the stack, squeezing the live queue
+// into hairlines. The chart is then a picture of history, not of the work in flight.
+// "Known to be terminal", not "known to be open": a status that exists only in history —
+// a stage the workflow has since renamed — has no role to check, and dropping it would
+// silently delete real work (up-data-tools retired a `todo` stage that peaked at 47).
+const TERMINAL_ROLE = new Set(STATUS_LIST.filter(s=>s.role!=="open").map(s=>s.key));
+// "hide done" SEEDS the same per-band state the legend chips drive, rather than filtering
+// on top of it. That is what keeps every status in the legend at all times: hiding the
+// done band must read as "switched off, click to restore", never as "this project has no
+// done column". A chip that disappears is indistinguishable from data that is missing.
+function setHideDone(hide){
+  for(const k of TERMINAL_ROLE) if(hide) trendHidden.add(k); else trendHidden.delete(k);
+  if(TREND_KEYS.every(k=>trendHidden.has(k))) trendHidden.clear();   // never blank the plot
+}
+const visibleBands = () => TREND_KEYS.filter(s=>!trendHidden.has(s));
 const TR = {};                                        // last render, for the hover layer
 
 function renderTrends(){
@@ -164,14 +197,14 @@ function renderTrends(){
   const k1 = NDAYS - 1;
   const k0 = trendRange ? Math.max(0, NDAYS - trendRange) : 0;
   const n = k1 - k0 + 1;
-  const stack = TREND_KEYS.filter(s => !trendHidden.has(s));
+  const stack = visibleBands();
 
   let maxTotal = 0;
   for(let k=k0;k<=k1;k++){
     let t = 0; for(const s of stack) t += (series[s]||[])[k] || 0;
     if(t > maxTotal) maxTotal = t;
   }
-  const yMax = niceMax(maxTotal);
+  const yMax = niceAxis(maxTotal);
   const X = j => padL + (n===1 ? plotW/2 : j/(n-1)*plotW);
   const Y = v => padT + plotH - (v/yMax)*plotH;
 
@@ -201,9 +234,8 @@ function renderTrends(){
   const tickN = Math.max(2, Math.min(6, n));
   const tickIdx = [...new Set(Array.from({length:tickN}, (_,i)=>
     Math.round(i*(n-1)/(tickN-1))))];
-  const ySteps = 4;
-  const grid = Array.from({length:ySteps+1}, (_,i)=>{
-    const v = yMax*i/ySteps, y = Y(v).toFixed(1);
+  const grid = Array.from({length:Y_STEPS+1}, (_,i)=>{
+    const v = yMax*i/Y_STEPS, y = Y(v).toFixed(1);
     return `<line class="gridline" x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}"/>`
          + `<text x="${padL-7}" y="${y}" text-anchor="end" dominant-baseline="middle" font-size="10.5">${Math.round(v)}</text>`;
   }).join("");
@@ -215,8 +247,12 @@ function renderTrends(){
   host.innerHTML =
     `<svg id="trendSvg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" tabindex="0"
        aria-label="Cumulative flow of ${esc(String(total))} issues across ${esc(String(stack.length))} statuses over ${esc(String(n))} days. Use the table view below for exact values.">
+      <defs><pattern id="trRetired" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="7" height="7" fill="var(--muted)" fill-opacity="0.30"/>
+        <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="3.5"/>
+      </pattern></defs>
       ${grid}
-      ${bands.map(b=>`<path class="band" d="${b.d}" fill="${trendMeta(b.s).color}" fill-opacity="0.8"/>`).join("")}
+      ${bands.map(b=>`<path class="band" d="${b.d}" fill="${bandFill(b.s)}" fill-opacity="0.8"/>`).join("")}
       ${gaps}
       <line class="axisline" x1="${padL}" y1="${Y(0).toFixed(1)}" x2="${W-padR}" y2="${Y(0).toFixed(1)}"/>
       ${xLabels}
@@ -236,8 +272,13 @@ function renderTrendLegend(series, k1){
   // carried by colour alone.
   document.getElementById("trendLegend").innerHTML = TREND_KEYS.map(s=>{
     const on = !trendHidden.has(s), m = trendMeta(s);
+    // the swatch mirrors the mark, hatch included, so a retired band is identifiable
+    // from the legend without hunting for it in the plot
+    const sw = RETIRED.has(s)
+      ? `background:repeating-linear-gradient(45deg,${m.color} 0 3px,transparent 3px 6px)`
+      : `background:${m.color}`;
     return `<button class="tchip" type="button" data-status="${esc(s)}" aria-pressed="${on}">
-      <span class="sw" style="background:${m.color}"></span>${esc(m.label)}
+      <span class="sw" style="${sw}"></span>${esc(m.label)}
       <span class="tn">${(series[s]||[])[k1] || 0}</span></button>`;
   }).join("");
 }
@@ -261,7 +302,9 @@ function renderTrendTable(series){
 function renderTrendNote(series, k0, k1){
   const {stack} = TR;
   const at = k => stack.reduce((a,s)=>a + ((series[s]||[])[k] || 0), 0);
-  const doneKeys = STATUS_LIST.filter(s=>s.role==="done").map(s=>s.key).filter(s=>stack.includes(s));
+  // throughput is a fact about the project, not about which bands are switched on — it
+  // stays computed over every done-role status even when "hide done" drops them from view
+  const doneKeys = STATUS_LIST.filter(s=>s.role==="done").map(s=>s.key);
   const shipped = doneKeys.reduce((a,s)=>a + (((series[s]||[])[k1]||0) - ((series[s]||[])[k0]||0)), 0);
   const grew = at(k1) - at(k0);
   const span = k1 - k0 + 1;
@@ -275,8 +318,9 @@ function renderTrendNote(series, k0, k1){
   if(themeFilterActive())
     caveats.push(`deleted issues are excluded while a theme filter is on — they have no row left to classify`);
   document.getElementById("trendNote").textContent =
-    `${span} days · scope ${grew>=0?"+":""}${grew} to ${at(k1)} tracked items · `
-    + `${shipped>=0?"+":""}${shipped} completed over the window. `
+    `${span} days · ${at(k1)} items in the bands shown (${grew>=0?"+":""}${grew} over the window) · `
+    + `${shipped>=0?"+":""}${shipped} completed project-wide in the same period. `
+    + (showDone ? "" : `Terminal statuses are hidden — untick “hide done” to see the completion base. `)
     + `Replayed from ${HIST.length} activity-log events — every status change the project recorded. `
     + (caveats.length ? `Caveats: ${caveats.join("; ")}.` : "");
 }
@@ -389,6 +433,7 @@ if(!HIST.length || !TIMELINES.length){
   if(panel) panel.hidden = true;
 } else {
   document.getElementById("tabTrendsN").textContent = NDAYS + "d";
+  setHideDone(!showDone);        // "hide done" ships ticked — seed the bands to match
   renderTrendControls();
   renderTrends();
   document.getElementById("trendControls").addEventListener("click", ev=>{
@@ -412,7 +457,8 @@ if(!HIST.length || !TIMELINES.length){
     const b = ev.target.closest(".tchip"); if(!b) return;
     const s = b.dataset.status;
     if(trendHidden.has(s)) trendHidden.delete(s);
-    else if(trendHidden.size < TREND_KEYS.length-1) trendHidden.add(s);   // never hide them all
+    // never let the last band be switched off — an empty plot reads as broken, not as empty
+    else if(visibleBands().length > 1) trendHidden.add(s);
     renderTrends();
   });
   // the panel is hidden at load, so its width is only real once the tab is opened

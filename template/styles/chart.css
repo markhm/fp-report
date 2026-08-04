@@ -56,3 +56,17 @@
   #trendTable th.num,#trendTable td.num{text-align:right}
   #trendTable .sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
   .trend-note{color:var(--muted);font-size:11px;margin-top:10px}
+  /* ---- flow: diverging columns around a zero baseline ---- */
+  #flowSvg{display:block;width:100%;height:auto;touch-action:pan-y}
+  #flowSvg:focus{outline:2px solid var(--link);outline-offset:3px;border-radius:6px}
+  #flowSvg text{font-family:inherit;fill:var(--muted);font-variant-numeric:tabular-nums}
+  /* net change rides over the bars as an annotation, not a fourth category — strong ink,
+     no fill, so it never reads as another stack segment */
+  .flownet{fill:none;stroke:var(--head);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;opacity:.75}
+  .flowhit{cursor:crosshair}
+  #flowTable{margin-top:12px}
+  #flowTable table{font-size:12.5px}
+  #flowTable th,#flowTable td{white-space:nowrap}
+  #flowTable td{font-variant-numeric:tabular-nums}
+  #flowTable th.num,#flowTable td.num{text-align:right}
+  #flowTable .sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}

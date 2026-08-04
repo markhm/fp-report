@@ -11,7 +11,7 @@
 #   fp-report --issues-file J  # render JSON J instead of calling fp (offline/CI)
 #   fp-report --no-labels      # skip the per-issue label fetch (faster, no themes from labels)
 #   fp-report --refresh-labels # ignore the label cache and re-fetch every issue
-#   fp-report --no-history     # skip the 'fp log' replay (drops the Trends tab)
+#   fp-report --no-history     # skip the 'fp log' replay (drops Trends + Flow)
 #   fp-report --history-file L # replay this saved 'fp log' output (offline/CI)
 #
 # The engine + HTML template live once (this folder). Each project supplies its own
@@ -169,6 +169,8 @@ main() {
     LABEL_JOBS=12                                  # parallel 'fp issue show' calls
     FETCH_HISTORY=true                             # replay 'fp log' for the Trends tab
     HISTORY_LIMIT=200000                           # 'fp log --limit' — big enough to mean "everything"
+    # Which tabs to build. Empty = all of them. Space- or comma-separated, case-insensitive.
+    REPORTS_INCLUDED=""
     # shellcheck source=/dev/null
     . "$CONF"
     [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
@@ -279,6 +281,21 @@ PY
     # from createdAt/updatedAt. We ask for -a (all events) so a future reclassification of
     # "low-signal" can't silently drop status changes; the parser ignores what it doesn't need.
     [ -z "$HISTORY_ARG" ] || FETCH_HISTORY="$HISTORY_ARG"
+    # Normalise REPORTS_INCLUDED to a lowercase, space-delimited list. Unset = every tab.
+    ALL_REPORTS="themes epics issues orphans trends flow"
+    if [ -n "$REPORTS_INCLUDED" ]; then
+        REPORTS="$(printf '%s' "$REPORTS_INCLUDED" | tr 'A-Z,' 'a-z ' | tr -s ' ')"
+        for r in $REPORTS; do
+            case " $ALL_REPORTS " in *" $r "*) ;; *) echo "  (unknown report in REPORTS_INCLUDED: $r)" >&2 ;; esac
+        done
+    else
+        REPORTS="$ALL_REPORTS"
+    fi
+    # Only Trends and Flow need the activity log. If neither is being built, don't pay
+    # for it — this is the actual saving from excluding a report, since the page weight is
+    # dominated by the issue JSON every tab shares.
+    case " $REPORTS " in *" trends "*|*" flow "*) ;; *) FETCH_HISTORY=false ;; esac
+
     printf '{"events":[],"reason":"not collected"}' > "$TMP_HIST"
     HAVE_LOG=false
     if [ "$FETCH_HISTORY" != true ]; then
@@ -349,7 +366,8 @@ PY
     TEMPLATE="$TEMPLATE" OUT="$OUT" JSON="$TMP_JSON" GENERATED_AT="$GENERATED_AT" \
     FP_PREFIX="$FP_PREFIX" PROJECT_NAME="$PROJECT_NAME" APP_NAME="$APP_NAME" REPORT_TITLE="$REPORT_TITLE" \
     LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
-    THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" python3 - <<'PY'
+    THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" \
+    REPORTS="$REPORTS" python3 - <<'PY'
 import os, re, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -394,11 +412,14 @@ themes = json.dumps(json.load(open(os.environ["THEMES_PATH"], encoding="utf-8"))
 # JSON — an empty events list is the documented "no history" state, not an error.
 history = json.dumps(json.load(open(os.environ["HIST_PATH"], encoding="utf-8")),
                      separators=(",", ":")).replace("<", "\\u003c")
+# Which tabs the page should show (REPORTS_INCLUDED, already normalised by the shell).
+reports = json.dumps(os.environ.get("REPORTS", "").split(), separators=(",", ":"))
 theme = open(os.environ["THEME_PATH"], encoding="utf-8").read().rstrip("\n")   # raw CSS custom properties
 html = (tpl.replace("__FP_DATA__", data)
            .replace("__STATUS_CONFIG__", status)
            .replace("__THEMES_CONFIG__", themes)
            .replace("__FP_HISTORY__", history)
+           .replace("__REPORTS_INCLUDED__", reports)
            .replace("__THEME_CSS__", theme)
            .replace("__GENERATED_AT__", os.environ["GENERATED_AT"])
            .replace("__ID_PREFIX__", os.environ["FP_PREFIX"])

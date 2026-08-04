@@ -66,6 +66,8 @@ th(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_theme
 orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orphans.js" "$@"; }
 # tr <html> <check> [args…] — assert on the cumulative-flow replay (same skip)
 tr(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_trends.js" "$@"; }
+# flow <html> <check> [args…] — assert on the flow derivative (same skip)
+flow(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_flow.js" "$@"; }
 
 echo "fp-report test suite"
 
@@ -161,10 +163,10 @@ render_h "$TRD" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/base.conf"
 t "history fixture renders"                  test -s "$TRD"
 t "trends JS parses"                         jsparse "$TRD"
 t "Trends tab sits after Orphans"            bash -c '[ "$(grep -n "data-panel=\"panel-orphans\"" "'"$TRD"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-trends\"" "'"$TRD"'" | head -1 | cut -d: -f1)" ]'
-# the parser reads 'fp log' text: 17 of the fixture's 19 events are ones we model
-# (8 status + 8 created + 1 deleted); the comment and dependencies rows are ignored
+# the parser reads 'fp log' text: 20 of the fixture's 22 events are ones we model
+# (9 status + 9 created + 2 deleted); the comment and dependencies rows are ignored
 # rather than guessed at, so a comment body can never be read as a transition
-t "parses the fp log transcript"             tr "$TRD" events 17
+t "parses the fp log transcript"             tr "$TRD" events 20
 # bands are stacked in the order the registry declares, which was chosen so no two
 # touching bands collide under colour-vision deficiency
 t "stack order comes from the registry"      tr "$TRD" stack "done,deferred,rejected,selected,in-progress,todo"
@@ -193,7 +195,63 @@ t "today reconciles: done"                   tr "$TRD" today done 1
 t "today reconciles: deferred"               tr "$TRD" today deferred 1
 t "today reconciles: rejected"               tr "$TRD" today rejected 1
 t "no unrecorded live status to reconcile"   tr "$TRD" stat mismatched 0
-t "one deleted issue accounted for"          tr "$TRD" stat deleted 1
+t "deleted issues accounted for"             tr "$TRD" stat deleted 2
+# a status the workflow has since renamed away survives: it has no role to check, and
+# dropping it would silently delete real work from the default view
+t "a retired status still gets a band"       tr "$TRD" count 2026-07-11 triage 1
+# "hide done" ships ticked and drops terminal bands here exactly as it does on the tiles:
+# with done in the stack it is the majority of the height and the live queue underneath
+# collapses into unreadable hairlines
+t "hide done leaves only live statuses"      tr "$TRD" base hidedone "selected,in-progress,todo,triage"
+t "…and unticking restores the full stack"   tr "$TRD" base showdone "done,deferred,rejected,selected,in-progress,todo,triage"
+# a hidden band must still be listed, switched off: a chip that disappears is
+# indistinguishable from "this project has no done column"
+ALL_CHIPS="done,deferred,rejected,selected,in-progress,todo,triage"
+t "hidden statuses stay in the legend"       tr "$TRD" legend hidedone "$ALL_CHIPS"
+t "…and the legend is stable either way"     tr "$TRD" legend showdone "$ALL_CHIPS"
+# gridlines land on round numbers: the STEP is rounded up, not the ceiling — rounding the
+# ceiling is what produces an axis labelled 375 / 750 / 1125
+t "axis rounds the step, not the ceiling"    tr "$TRD" axis 1117 1200
+t "…and stays tight on small backlogs"       tr "$TRD" axis 8 8
+t "…never collapses to a zero-height axis"   tr "$TRD" axis 0 4
+# ---- flow: the derivative — what moved, and when ----
+t "Flow tab sits after Trends"           bash -c '[ "$(grep -n "data-panel=\"panel-trends\"" "'"$TRD"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-flow\"" "'"$TRD"'" | head -1 | cut -d: -f1)" ]'
+t "flow panel rendered"                  grep -q 'id="flowChart"' "$TRD"
+# The reconciliation that makes the chart trustworthy: the columns must sum to the backlog
+# that exists today, or the bars are just decoration.
+t "flow reconciles with the backlog"     flow "$TRD" inv
+t "…9 issues opened across the history"      flow "$TRD" sum opened 9
+t "…1 completed (only child002 reached done)" flow "$TRD" sum completed 1
+t "…2 dropped (deferred + rejected)"          flow "$TRD" sum dropped 2
+t "…2 left the backlog"                       flow "$TRD" sum deleted 2
+# a rejected issue must never be counted as solved — that is why the bars are split
+t "rejected work counts as dropped, not done" flow "$TRD" at month 2026-04-10 dropped 2
+t "…and April completed nothing"              flow "$TRD" at month 2026-04-10 completed 0
+t "month buckets tally creations"             flow "$TRD" at month 2026-05-15 opened 5
+t "…and completion lands in its own month"    flow "$TRD" at month 2026-06-15 completed 1
+# bucket edges are UTC and ISO (weeks start Monday), not locale-dependent
+t "a Saturday falls in the Monday week"       flow "$TRD" start week 2026-06-20 2026-06-15
+t "…a week can span a month boundary"         flow "$TRD" start week 2026-04-01 2026-03-30
+t "months start on the 1st"                   flow "$TRD" start month 2026-06-20 2026-06-01
+t "days are their own bucket"                 flow "$TRD" start day 2026-06-20 2026-06-20
+
+# ---- REPORTS_INCLUDED: choose which tabs get built ----
+t "unset REPORTS_INCLUDED builds them all"   grep -q 'const REPORTS = \["themes","epics","issues","orphans","trends","flow"\]' "$BASE"
+RI="$TMP/subset.html"; mkconf "$TMP/ri.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'REPORTS_INCLUDED="Themes, Issues"'
+render_h "$RI" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/ri.conf"
+t "a subset renders"                         test -s "$RI"
+t "…case and commas are tolerated"           grep -q 'const REPORTS = \["themes","issues"\]' "$RI"
+t "…and the JS still parses"                 jsparse "$RI"
+# the real saving: no history-backed tab means the engine never pays for 'fp log'
+# …even though --history-file supplied one: no history-backed tab means no reason to parse it
+t "excluding Trends+Flow skips fp log"   grep -q '"events":\[\]' "$RI"
+t "…so neither history tab is listed"        bash -c '! grep -q "\"trends\"" "'"$RI"'" && ! grep -q "\"flow\"" "'"$RI"'"'
+# asking only for a history tab must still collect history
+RH="$TMP/onlytrends.html"; mkconf "$TMP/rh.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'REPORTS_INCLUDED="Trends"'
+render_h "$RH" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/rh.conf"
+t "Trends alone still replays the log"       tr "$RH" events 20
+t "…and Themes is excluded from that page"   grep -q 'const REPORTS = \["trends"\]' "$RH"
+
 # --no-history must win over a conf that asks for it
 NH="$TMP/nohist.html"; mkconf "$TMP/nh.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"'
 "$ENGINE" -c "$TMP/nh.conf" --issues-file "$FIX" --history-file "$ROOT/test/fixture.history.txt" \
