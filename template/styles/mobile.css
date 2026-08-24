@@ -18,6 +18,10 @@
     .epic > div{min-width:0}
     .epic .et{white-space:normal;overflow:visible;text-overflow:clip}
     .epic .er{justify-content:flex-start}
+    /* epic sort keys: four short chips wrap into two rows fine — but the direction hint is a
+       sentence, so give it its own line rather than letting it strand a chip beside it */
+    #epicSort .facet{padding:5px 11px;font-size:12px}
+    #epicSort .facet-hint{flex-basis:100%;margin-left:0}
     /* epic child rows → id+idle / title / badges */
     .echild{grid-template-columns:auto 1fr auto;row-gap:5px;column-gap:8px;padding:10px 12px 10px 16px;font-size:12.5px}
     .echild .eeid{grid-column:1;grid-row:1}

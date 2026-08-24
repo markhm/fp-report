@@ -64,6 +64,8 @@ inline_include(){
 th(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_themes.js" "$@"; }
 # orph <html> <check> [args…] — assert on orphan detection in the rendered report (same skip)
 orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orphans.js" "$@"; }
+# ep <html> <check> [args…] — assert on the epic roadmap's sort (same skip)
+ep(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_epics.js" "$@"; }
 # tr <html> <check> [args…] — assert on the cumulative-flow replay (same skip)
 tr(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_trends.js" "$@"; }
 # flow <html> <check> [args…] — assert on the flow derivative (same skip)
@@ -129,6 +131,38 @@ t "fallback taxonomy still parses"             jsparse "$TH"
 NL="$TMP/nolabels.html"; mkconf "$TMP/nl.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'FETCH_LABELS="false"'
 render "$NL" "$FIX" "$TMP/nl.conf"
 t "FETCH_LABELS=false still renders"           test -s "$NL"
+
+# ---- epics: the roadmap, and the sort that drives epics to done ----
+EPI="$TMP/epics.html"
+render "$EPI" "$ROOT/test/fixture.epics.json" "$TMP/base.conf"
+t "epic fixture renders"                     test -s "$EPI"
+t "epic JS parses"                           jsparse "$EPI"
+t "sort bar rendered above the roadmap"      grep -q 'id="epicSort"' "$EPI"
+t "four sort keys, urgency first"            ep "$EPI" keys "urgency,created,activity,progress"
+# every epic with open children, plus the childless "Epic:"-titled one
+t "roadmap lists all four epics"             ep "$EPI" listed "epic0001,epic0002,epic0003,epic0004"
+# the default must not move: the tab has always opened on what is most pressing
+t "default order is unchanged (urgency)"     ep "$EPI" order urgency fwd "epic0002,epic0004,epic0001,epic0003"
+t "created puts the oldest epic first"       ep "$EPI" order created fwd "epic0001,epic0004,epic0002,epic0003"
+t "…and flipping gives newest first"         ep "$EPI" order created rev "epic0003,epic0002,epic0004,epic0001"
+t "activity puts the most idle first"        ep "$EPI" order activity fwd "epic0002,epic0004,epic0003,epic0001"
+t "…and flipping gives freshest first"       ep "$EPI" order activity rev "epic0001,epic0003,epic0004,epic0002"
+t "progress puts the least complete first"   ep "$EPI" order progress fwd "epic0002,epic0004,epic0003,epic0001"
+# the point of the roll-up: epic0001's own record was last edited in January, but a child
+# moved in August — an epic whose work is live must never be reported as 7 months idle
+t "last activity rolls up from the children" ep "$EPI" sameas epic0001 chla0001
+# a childless epic has no children to roll up — its own updatedAt IS the signal
+t "childless epic falls back to its own"     ep "$EPI" html "epic0004"
+t "…and reports no sub-issues, not 0/0"      ep "$EPI" html "no sub-issues yet"
+# the two sort metrics ride on the row, so an unfamiliar ordering explains itself
+t "rows carry the age they sort on"          ep "$EPI" html "d old"
+t "…and the idle days"                       ep "$EPI" html "idle "
+t "a long-idle epic is flagged stale"        ep "$EPI" html 'class="flag stale"'
+# expanded rows are keyed by epic id, not row position, so a re-sort keeps open what the
+# reader opened rather than whichever epic lands in that slot afterwards
+t "rows are keyed by epic id"                bash -c 'grep -q "data-eid=" "'"$EPI"'" && ! grep -q "data-eidx" "'"$EPI"'"'
+t "an expanded epic survives a re-sort"      ep "$EPI" keepsopen epic0003 created
+t "…under every key"                         ep "$EPI" keepsopen epic0001 activity
 
 # ---- orphans: open work left behind in a closed epic ----
 t "Orphans tab sits after Issues"            bash -c 'grep -q "data-panel=\"panel-orphans\"" "'"$BASE"'" && [ "$(grep -n "data-panel=\"panel-issues\"" "'"$BASE"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-orphans\"" "'"$BASE"'" | head -1 | cut -d: -f1)" ]'

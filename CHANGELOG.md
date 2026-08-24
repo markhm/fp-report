@@ -18,6 +18,21 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **The Epic roadmap is sortable** — a key row above the tab offering **Urgency** (the
+  previous fixed order, still the default), **Created**, **Last activity** and
+  **Progress**; clicking the active key flips its direction, and every key falls back to
+  the urgency comparator so ties keep landing in the pressing order. Urgency answers what
+  is most *pressing*; it cannot answer how long an epic has been hanging around or when
+  anything last moved on it, which is what driving epics to completion needs. **Last
+  activity is rolled up over the epic and its direct children**, not read off the epic's
+  own `updatedAt`: that timestamp only moves when the epic *record* is edited, so an epic
+  whose children all changed yesterday would otherwise report as months idle — on a live
+  40-epic backlog the two values differ for 21 of them. Childless "Epic"-titled issues
+  fall back to their own `updatedAt`, which for them is the real signal. Each row now
+  prints the metrics it is sorted on (`54d old · idle 54d`, `stale` past 14 days) so an
+  unfamiliar ordering explains itself, and expanded rows are keyed by epic id rather than
+  row position, so a re-sort keeps open what the reader opened instead of whichever epic
+  lands in that slot.
 - **Trends tab** (after Orphans) — a cumulative flow diagram: how many issues sat in each
   status on every past day, as a stacked area chart. Built by **replaying `fp log`**
   (every `status: A → B`, `issue_created` and `issue_deleted` the project recorded), not

@@ -216,6 +216,33 @@ A raw CSS file of custom properties for `:root` (light) and dark. Two ship in
 Copy one and edit the hex values to rebrand — its header lists the required token
 contract. The JS status colour map references the tokens by name, so keep the names.
 
+## Epics — sorting the roadmap
+
+The **Epics** tab lists every epic with open children, plus still-open issues titled
+"Epic" that have not been broken down yet. It opens on **Urgency** — priority, then how
+much work is still open — which answers *what is most pressing*. Three more sort keys
+answer the questions that actually drive an epic to done:
+
+- **Created** — oldest first. The epics quietly ageing out of relevance.
+- **Last activity** — most idle first. The epics nobody has touched.
+- **Progress** — least complete first. The epics still near the starting line.
+
+Click a key to sort by it; click the *active* key to flip the direction. Every key falls
+back to the urgency comparator, so epics that tie on the key still land in the pressing
+order. The two metrics being sorted on are printed on each row (`54d old · idle 54d`), so
+an unfamiliar ordering explains itself, and an epic idle more than 14 days is flagged
+`stale` exactly as on the Issues tab.
+
+**"Last activity" is rolled up over the epic and its direct children.** An epic issue's
+own `updatedAt` only moves when the epic *record* is edited — its title, priority or
+description — so on its own it says nothing about whether the work is moving: an epic
+whose children all changed yesterday can still read as months idle. Taking the maximum
+across the epic and its children reports what the tab is actually asked about. On a real
+40-epic backlog the two differ for about half of them. Direct children only — the same
+one level the tab's `done / open / other` counts are taken over. A childless "Epic"-titled
+issue has nothing to roll up, so it falls back to its own `updatedAt`, which for it *is*
+the signal.
+
 ## Orphans — work left behind in a closed epic
 
 The **Orphans** tab needs no configuration; it is derived from the status registry's
@@ -500,8 +527,10 @@ What it covers: placeholder replacement and injection safety (a hostile issue ti
 not break out of the embedded JSON), prefix/title/theme/status/taxonomy injection and
 their fallbacks, the open/blocked model, `--init` scaffolding, the pure path helpers, the
 Themes model — resolution order (label > inherited > keyword > unthemed), the partition
-invariants, epic/leaf separation, and epic-scoped priority — the orphan rule, including
-every near-miss it must *not* flag, and the Trends replay: parsing `fp log` text, initial
+invariants, epic/leaf separation, and epic-scoped priority — the epic roadmap's four sort
+keys in both directions (including that "last activity" follows a child's clock rather
+than the epic record's own, and that an expanded row survives a re-sort), the orphan rule,
+including every near-miss it must *not* flag, and the Trends replay: parsing `fp log` text, initial
 status taken from the first transition rather than back-dating the current one, deleted
 issues counted only for the span they existed, and — the one that matters most — that the
 replay's final day reconciles **exactly** with the live snapshot, status for status. Flow
@@ -519,6 +548,7 @@ that excluding both history tabs really does skip the `fp log` call.
 | `python3 test/assert_model.py <html> <metric> <n>` | issue/open/blocked counts parsed out of the embedded JSON |
 | `th <html> <check> [args…]` | the Themes model — see `test/assert_themes.js` for the checks |
 | `orph <html> <check> [args…]` | the orphan rule — see `test/assert_orphans.js` for the checks |
+| `ep <html> <check> [args…]` | the epic roadmap's sort — see `test/assert_epics.js` for the checks |
 | `tr <html> <check> [args…]` | the Trends replay — see `test/assert_trends.js` for the checks |
 | `flow <html> <check> [args…]` | the Flow derivative — see `test/assert_flow.js` for the checks |
 
@@ -527,7 +557,8 @@ injected script against a minimal DOM stub — so assertions exercise the shippe
 rather than a reimplementation of its rules, and a rule cannot pass its test and still be
 wrong in the browser. It also hands back the elements the script rendered into, so a check
 can assert on the produced markup. Fixtures stay deliberately tiny (7 issues + a 9-issue
-orphan fixture, a 19-event `fp log` transcript, a 3-theme taxonomy) so every expected
+orphan fixture, a 9-issue 4-epic roadmap fixture, a 19-event `fp log` transcript, a
+3-theme taxonomy) so every expected
 number is checkable by hand.
 
 ## Changelog

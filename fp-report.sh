@@ -107,7 +107,8 @@ THEME_FILE="$theme_name"
 OUTPUT_FILE="fp-report.html"
 EOF
     # convenience symlink → the PATH entry if present, else this engine
-    if [ -e "$HOME/bin/fp-report" ]; then ln -sf "$HOME/bin/fp-report" "$scripts_dir/fp-report"
+    local on_path; on_path="$(command -v fp-report || true)"
+    if [ -n "$on_path" ] && [ "$on_path" != "$scripts_dir/fp-report" ]; then ln -sf "$on_path" "$scripts_dir/fp-report"
     else ln -sf "$SELF" "$scripts_dir/fp-report"; fi
     echo "✓ Initialised fp-report in $scripts_dir  (prefix $prefix, theme $theme_name)"
     echo "  review scripts/fp-report.conf, then run:  fp-report"

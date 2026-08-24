@@ -1,0 +1,14 @@
+{"issues":[
+ {"id":"ea","shortId":"epic0001","title":"Widget platform","description":"","status":"todo","priority":"medium","parent":null,"dependencies":[],"createdAt":"2026-01-05T10:00:00Z","updatedAt":"2026-01-05T10:00:00Z"},
+ {"id":"ea1","shortId":"chla0001","title":"Build the widget","description":"","status":"in-progress","priority":"high","parent":"ea","dependencies":[],"createdAt":"2026-01-06T10:00:00Z","updatedAt":"2026-08-20T10:00:00Z"},
+ {"id":"ea2","shortId":"chla0002","title":"Document the widget","description":"","status":"done","priority":"low","parent":"ea","dependencies":[],"createdAt":"2026-01-07T10:00:00Z","updatedAt":"2026-02-01T10:00:00Z"},
+
+ {"id":"eb","shortId":"epic0002","title":"Billing rewrite","description":"","status":"todo","priority":"critical","parent":null,"dependencies":[],"createdAt":"2026-03-10T10:00:00Z","updatedAt":"2026-02-20T10:00:00Z"},
+ {"id":"eb1","shortId":"chlb0001","title":"Invoice model","description":"","status":"todo","priority":"high","parent":"eb","dependencies":[],"createdAt":"2026-03-11T10:00:00Z","updatedAt":"2026-02-15T10:00:00Z"},
+ {"id":"eb2","shortId":"chlb0002","title":"Payment gateway","description":"","status":"todo","priority":"medium","parent":"eb","dependencies":[],"createdAt":"2026-03-12T10:00:00Z","updatedAt":"2026-03-01T10:00:00Z"},
+
+ {"id":"ec","shortId":"epic0003","title":"Onboarding polish","description":"","status":"todo","priority":"low","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-06-01T10:00:00Z"},
+ {"id":"ec1","shortId":"chlc0001","title":"Welcome tour","description":"","status":"todo","priority":"low","parent":"ec","dependencies":[],"createdAt":"2026-06-02T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+
+ {"id":"ed","shortId":"epic0004","title":"Epic: reporting overhaul","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-02-01T10:00:00Z","updatedAt":"2026-04-01T10:00:00Z"}
+]}
