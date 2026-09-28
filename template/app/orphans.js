@@ -24,15 +24,16 @@ document.getElementById("orphans").innerHTML = orphanGroups.length
       // idle, not "closed Nd ago": updatedAt is the last edit, which is only usually the close
       const since = g.p._stale!=null ? ` · idle ${g.p._stale}d` : "";
       const n = g.items.length;
-      return `<div class="epic ogroup open" data-oidx="${idx}">
+      return `<div class="epic ogroup open" data-oidx="${idx}" data-id="${IDP}${g.p.shortId}">
         <div><div class="et" title="${esc(g.p.title)}"><span class="caret">▸</span> ${esc(g.p.title)}</div>
-          <div class="ec">${IDP}${g.p.shortId} · ${esc(sLabel)}${since} · ${n} stranded</div></div>
+          <div class="ec"><span class="cid">${IDP}${g.p.shortId}</span> · ${esc(sLabel)}${since} · ${n} stranded</div></div>
         <div class="er">${statusBadge(g.p.status)}<span class="flag">✦ ${n} orphaned</span></div>
       </div>
       <div class="epic-children" data-oidx="${idx}">${g.items.map(childRow).join("")}</div>`;
     }).join("")
   : `<div class="empty">No orphans — nothing is stranded under a closed epic.</div>`;
 document.getElementById("orphans").addEventListener("click", ev=>{
+  if(ev.target.closest(".cid")) return;                 // the id chip copies; it doesn't expand
   const row = ev.target.closest(".epic"); if(!row) return;
   const kidsEl = row.nextElementSibling;
   if(!kidsEl || !kidsEl.classList.contains("epic-children")) return;

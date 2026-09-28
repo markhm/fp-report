@@ -83,11 +83,12 @@ function renderEpics(){
     // the two sort metrics ride on the row, so an unfamiliar ordering explains itself
     const ageLine = `${x.age!=null?` · ${x.age}d old`:""}`
       + `${x.idle!=null?` · idle ${x.idle}d${x.idle>14?' <span class="flag stale">stale</span>':""}`:""}`;
+    const eid = `<span class="cid">${IDP}${x.e.shortId}</span>`;   // click/tap to copy, as on a search hit
     const ecLine = (t
-      ? `${IDP}${x.e.shortId} · ${x.done}/${x.total} done · ${x.openc} open${x.other?` · ${x.other} other`:""}`
-      : `${IDP}${x.e.shortId} · ${sLabel} · no sub-issues yet`) + ageLine;
+      ? `${eid} · ${x.done}/${x.total} done · ${x.openc} open${x.other?` · ${x.other} other`:""}`
+      : `${eid} · ${sLabel} · no sub-issues yet`) + ageLine;
     const open = epicOpen.has(x.e.id);
-    return `<div class="epic${t?"":" childless"}${open?" open":""}" data-eid="${x.e.id}">
+    return `<div class="epic${t?"":" childless"}${open?" open":""}" data-eid="${x.e.id}" data-id="${IDP}${x.e.shortId}">
       <div><div class="et" title="${esc(x.e.title)}"><span class="caret">▸</span> ${esc(x.e.title)}</div>
         <div class="ec">${ecLine}</div></div>
       <div><div class="pbar">
@@ -110,6 +111,7 @@ document.getElementById("epicSort").addEventListener("click", ev=>{
   renderEpicSort(); renderEpics();
 });
 document.getElementById("epics").addEventListener("click", ev=>{
+  if(ev.target.closest(".cid")) return;                 // the id chip copies; it doesn't expand
   const row = ev.target.closest(".epic"); if(!row) return;
   const kidsEl = row.nextElementSibling;
   if(!kidsEl || !kidsEl.classList.contains("epic-children")) return;

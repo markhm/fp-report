@@ -163,6 +163,10 @@ t "a long-idle epic is flagged stale"        ep "$EPI" html 'class="flag stale"'
 t "rows are keyed by epic id"                bash -c 'grep -q "data-eid=" "'"$EPI"'" && ! grep -q "data-eidx" "'"$EPI"'"'
 t "an expanded epic survives a re-sort"      ep "$EPI" keepsopen epic0003 created
 t "…under every key"                         ep "$EPI" keepsopen epic0001 activity
+# the epic row carries its display id, so right-click copies it exactly as on an issue row,
+# and the id itself is a copy chip for the devices that have no right-click
+t "an epic row carries its display id"       ep "$EPI" html 'data-id="FP-epic0001"'
+t "…and the id is a copy chip"               ep "$EPI" html '<span class="cid">FP-epic0001</span>'
 
 # ---- orphans: open work left behind in a closed epic ----
 t "Orphans tab sits after Issues"            bash -c 'grep -q "data-panel=\"panel-orphans\"" "'"$BASE"'" && [ "$(grep -n "data-panel=\"panel-issues\"" "'"$BASE"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-orphans\"" "'"$BASE"'" | head -1 | cut -d: -f1)" ]'

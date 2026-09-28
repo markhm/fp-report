@@ -135,5 +135,7 @@ document.addEventListener("click", ev=>{
   if(chip){ ev.preventDefault(); ev.stopPropagation(); copyId(chip); return; }
   const hit=ev.target.closest(".hit");
   if(hit){ hit.classList.toggle("open"); return; }           // tap a result → read the full spec
-  if(COARSE){ const row=ev.target.closest("[data-id]"); if(row) copyId(row); }  // touch: tap a row to copy its id
+  // touch: tap a row to copy its id — except an epic row, where a tap already expands it
+  // (its id chip is the copy affordance there, on every device)
+  if(COARSE){ const row=ev.target.closest("[data-id]"); if(row && !row.classList.contains("epic")) copyId(row); }
 });

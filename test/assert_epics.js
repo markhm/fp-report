@@ -48,7 +48,7 @@ eval(app + `
     epicSortK = "urgency"; epicSortDir = 1; epicOpen.add(x.e.id); renderEpics();
     epicSortK = A[1]; epicSortDir = 1; renderEpics();
     const rows = [...document.getElementById("epics").innerHTML.matchAll(
-      /<div class="epic([^"]*)" data-eid="([^"]+)">/g)];
+      /<div class="epic([^"]*)" data-eid="([^"]+)"[^>]*>/g)];
     const openRows = rows.filter(m => / open/.test(m[1])).map(m => m[2]);
     const kidsOpen = new RegExp('<div class="epic-children" data-eid="' + x.e.id + '">').test(
       document.getElementById("epics").innerHTML);

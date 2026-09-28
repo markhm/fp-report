@@ -18,6 +18,12 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **Epic and orphan rows show their id as a copy chip.** An issue row's id could always
+  be copied (right-click, or a tap on touch devices), but an epic row's could not: its
+  id sat in plain text, and a tap expands the epic. The id is now a `.cid` chip that
+  copies on click or tap on every device, the row carries `data-id` so right-click
+  copies it as on an issue row, and clicking the chip no longer toggles the epic open.
+  On touch devices a tap on an epic row still only expands it.
 - **The Epic roadmap is sortable** — a key row above the tab offering **Urgency** (the
   previous fixed order, still the default), **Created**, **Last activity** and
   **Progress**; clicking the active key flips its direction, and every key falls back to

@@ -47,3 +47,4 @@ _sokrates/history
 
 # Claude Code: shared project settings are committed, personal overrides are not
 .claude/settings.local.json
+.fp/remote.toml
