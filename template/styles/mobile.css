@@ -67,3 +67,12 @@
     .filters select{min-width:0;max-width:100%;flex:1 1 45%}
     .filters #fEpic{max-width:none;flex:1 1 100%}
   }
+  @media (max-width:480px){
+    /* eight tabs no longer fit a phone: the row scrolls sideways instead of widening the page */
+    .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:0 0 auto;padding:9px 10px}
+    .tabs label.chk{flex:0 0 auto;padding-right:4px}
+    /* the Focus/Signals context line wraps rather than clipping its flags */
+    .fmeta{white-space:normal;overflow:visible;text-overflow:clip}
+  }

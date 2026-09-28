@@ -96,3 +96,24 @@
   @media (hover:hover){.cid:hover{text-decoration:underline}}
   body.searching #dashboard{display:none}
 
+
+  /* ---- Focus + Signals rows: the epic-child grid, with a context line under the title ---- */
+  .frow .eet{white-space:normal;overflow:visible;min-width:0}
+  .frow .eet .ft{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fmeta{display:block;margin-top:2px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fmeta .blk{color:var(--serious)}
+  .facets .facet.over{color:var(--critical);border-color:var(--critical);cursor:pointer}
+  #focus .echild:first-child{border-top:0}
+  /* ---- Signals sections ---- */
+  .sigsec{margin-bottom:12px;padding:0;overflow:hidden}
+  .sig-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:10px 14px;border-bottom:1px solid var(--border)}
+  .sigsec.quiet .sig-head{border-bottom:0}
+  .sig-t{font-weight:600}
+  .sig-n{font-variant-numeric:tabular-nums;font-weight:600;color:var(--serious)}
+  .sigsec.quiet .sig-n{color:var(--muted)}
+  .sig-rule{color:var(--muted);font-size:12px}
+  .sig-fix{flex-basis:100%;font-size:12px;color:var(--ink-2)}
+  .sigsec.quiet .empty{padding:0 14px 10px}
+  /* ---- KPI cards are links ---- */
+  .kpi.go{cursor:pointer}
+  @media (hover:hover){.kpi.go:hover{border-color:var(--accent,var(--border));transform:translateY(-1px)}}

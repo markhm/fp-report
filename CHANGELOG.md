@@ -18,6 +18,28 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **Focus tab, now the landing tab**: every open critical and high work item in one ranked
+  list (priority, then blocks-other-work, then unblocked before blocked, then longest idle),
+  each row with its epic, age, blockers and `workstation` claim. Epics are excluded: their
+  own `updatedAt` does not reflect the work inside them.
+- **Signals tab**: one section per plan-level problem, each with its rule, the issues it
+  caught and the fix: critical over budget, urgent but idle, stale claims, epics ready to
+  close, epic status behind its children, unprioritised, blocked, orphaned, bad
+  descriptions. Empty signals still render, collapsed.
+- **KPI cards are links** to their Signals section or tab, and the strip gains "Urgent,
+  idle", "Stale claims" and "Epic status drift". Thresholds are three new conf keys,
+  `CRITICAL_BUDGET` (5), `URGENT_IDLE_DAYS` (30) and `CLAIM_IDLE_DAYS` (7), validated as
+  whole numbers.
+- **Phone layout**: the tab row scrolls sideways instead of widening the page (it already
+  overflowed by 19px at 390px with six tabs; with eight it reached 560px).
+- **Fixed: unprioritised issues sorted by accident.** `PRIO_ORDER` had no entry for the
+  `"unset"` key `prioKey()` returns, so every priority comparison against an unprioritised
+  issue was `NaN` and fell through to the next sort key: in search results, and in any list
+  mixing prioritised and unprioritised work, a long-idle unprioritised issue could sort above
+  critical work. It now ranks last.
+- **One definition of "epic"** (`isEpicTitle`, now in `model.js`) shared by the Epics tab and
+  the Focus/Signals rules, and one tab-inclusion rule (`reportOn`, moved there from `ui.js`)
+  so a KPI card never links to a tab that `REPORTS_INCLUDED` left out.
 - **Epic and orphan rows show their id as a copy chip.** An issue row's id could always
   be copied (right-click, or a tap on touch devices), but an epic row's could not: its
   id sat in plain text, and a tap expands the epic. The id is now a `.cid` chip that

@@ -172,6 +172,10 @@ main() {
     HISTORY_LIMIT=200000                           # 'fp log --limit' — big enough to mean "everything"
     # Which tabs to build. Empty = all of them. Space- or comma-separated, case-insensitive.
     REPORTS_INCLUDED=""
+    # Signal thresholds for the Focus/Signals tabs and the KPI strip.
+    CRITICAL_BUDGET=5                              # more open critical issues than this = "critical" has lost its meaning
+    URGENT_IDLE_DAYS=30                            # a critical/high issue untouched this long is flagged
+    CLAIM_IDLE_DAYS=7                              # an in-progress claim untouched this long is flagged stale
     # shellcheck source=/dev/null
     . "$CONF"
     [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
@@ -283,7 +287,7 @@ PY
     # "low-signal" can't silently drop status changes; the parser ignores what it doesn't need.
     [ -z "$HISTORY_ARG" ] || FETCH_HISTORY="$HISTORY_ARG"
     # Normalise REPORTS_INCLUDED to a lowercase, space-delimited list. Unset = every tab.
-    ALL_REPORTS="themes epics issues orphans trends flow"
+    ALL_REPORTS="focus signals themes epics issues orphans trends flow"
     if [ -n "$REPORTS_INCLUDED" ]; then
         REPORTS="$(printf '%s' "$REPORTS_INCLUDED" | tr 'A-Z,' 'a-z ' | tr -s ' ')"
         for r in $REPORTS; do
@@ -368,7 +372,8 @@ PY
     FP_PREFIX="$FP_PREFIX" PROJECT_NAME="$PROJECT_NAME" APP_NAME="$APP_NAME" REPORT_TITLE="$REPORT_TITLE" \
     LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
     THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" \
-    REPORTS="$REPORTS" python3 - <<'PY'
+    REPORTS="$REPORTS" CRITICAL_BUDGET="$CRITICAL_BUDGET" URGENT_IDLE_DAYS="$URGENT_IDLE_DAYS" \
+    CLAIM_IDLE_DAYS="$CLAIM_IDLE_DAYS" python3 - <<'PY'
 import os, re, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -415,12 +420,23 @@ history = json.dumps(json.load(open(os.environ["HIST_PATH"], encoding="utf-8")),
                      separators=(",", ":")).replace("<", "\\u003c")
 # Which tabs the page should show (REPORTS_INCLUDED, already normalised by the shell).
 reports = json.dumps(os.environ.get("REPORTS", "").split(), separators=(",", ":"))
+# Signal thresholds (fp-report.conf). A non-integer is a config error, not a silent default:
+# a threshold that quietly fell back would make a signal look calmer than the backlog is.
+def whole(key):
+    v = os.environ.get(key, "").strip()
+    if not re.fullmatch(r"\d+", v):
+        raise SystemExit(f"fp-report: {key} must be a whole number, got {v!r}")
+    return int(v)
+signals = json.dumps({"criticalBudget": whole("CRITICAL_BUDGET"),
+                      "urgentIdleDays": whole("URGENT_IDLE_DAYS"),
+                      "claimIdleDays":  whole("CLAIM_IDLE_DAYS")}, separators=(",", ":"))
 theme = open(os.environ["THEME_PATH"], encoding="utf-8").read().rstrip("\n")   # raw CSS custom properties
 html = (tpl.replace("__FP_DATA__", data)
            .replace("__STATUS_CONFIG__", status)
            .replace("__THEMES_CONFIG__", themes)
            .replace("__FP_HISTORY__", history)
            .replace("__REPORTS_INCLUDED__", reports)
+           .replace("__SIGNAL_CONFIG__", signals)
            .replace("__THEME_CSS__", theme)
            .replace("__GENERATED_AT__", os.environ["GENERATED_AT"])
            .replace("__ID_PREFIX__", os.environ["FP_PREFIX"])

@@ -4,9 +4,7 @@ document.getElementById("tabIssuesN").textContent = openIssues.length;
 // than stripped: every section's markup stays in the DOM so the render code above can keep
 // writing into it unconditionally, which keeps this feature from touching anything else.
 // The generation saving is upstream — the engine skips 'fp log' when no tab needs it.
-const REPORTS = __REPORTS_INCLUDED__;
-const reportOf = id => (id||"").replace("panel-","");
-const reportOn = id => !REPORTS.length || REPORTS.includes(reportOf(id));
+// REPORTS / reportOn live in model.js, so the KPI strip can check a target before linking it.
 document.querySelectorAll(".tab").forEach(t=>{
   if(reportOn(t.dataset.panel)) return;
   t.hidden = true;

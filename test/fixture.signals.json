@@ -1,0 +1,240 @@
+{
+ "_comment": "Signals fixture: every Focus/Signals rule with a case that must fire and a near-miss that must not. OLD dates are years idle; NEW dates are in the future, so their idle days are negative and never cross a threshold.",
+ "issues": [
+  {
+   "id": "c1",
+   "shortId": "crit0001",
+   "title": "Critical, active, blocks another",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "critical",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "c2",
+   "shortId": "crit0002",
+   "title": "Critical, untouched for years",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "critical",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "id": "h1",
+   "shortId": "high0001",
+   "title": "High, in progress but quiet",
+   "description": "A real description of the work.",
+   "status": "in-progress",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z",
+   "properties": {
+    "workstation": "mac-mini:adhoc"
+   }
+  },
+  {
+   "id": "h2",
+   "shortId": "high0002",
+   "title": "High, blocked by crit0001",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [
+    "c1"
+   ],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "h3",
+   "shortId": "high0003",
+   "title": "High, fresh and unblocked",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "m1",
+   "shortId": "medi0001",
+   "title": "Medium, not in focus",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "medium",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "id": "u1",
+   "shortId": "unpr0001",
+   "title": "No priority at all",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": null,
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "x1",
+   "shortId": "defe0001",
+   "title": "Deferred high, not open",
+   "description": "A real description of the work.",
+   "status": "deferred",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "id": "e1",
+   "shortId": "epic0001",
+   "title": "Epic whose children are all closed",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "id": "d1",
+   "shortId": "done0001",
+   "title": "Finished child",
+   "description": "A real description of the work.",
+   "status": "done",
+   "priority": "medium",
+   "parent": "e1",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "d2",
+   "shortId": "reje0001",
+   "title": "Rejected child",
+   "description": "A real description of the work.",
+   "status": "rejected",
+   "priority": "low",
+   "parent": "e1",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "e2",
+   "shortId": "epic0002",
+   "title": "Epic still in backlog with a child moving",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "medium",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "p1",
+   "shortId": "prog0001",
+   "title": "Child in progress",
+   "description": "A real description of the work.",
+   "status": "in-progress",
+   "priority": "medium",
+   "parent": "e2",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "e3",
+   "shortId": "epic0003",
+   "title": "Epic already in progress",
+   "description": "A real description of the work.",
+   "status": "in-progress",
+   "priority": "medium",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "q1",
+   "shortId": "todo0001",
+   "title": "Child not started",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "low",
+   "parent": "e3",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "q2",
+   "shortId": "done0002",
+   "title": "Finished child of an in-progress epic",
+   "description": "A real description of the work.",
+   "status": "done",
+   "priority": "low",
+   "parent": "e3",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "id": "u2",
+   "shortId": "unpr0002",
+   "title": "No priority, blocked, idle for years",
+   "status": "todo",
+   "priority": null,
+   "parent": null,
+   "dependencies": [
+    "c1"
+   ],
+   "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "id": "ep4",
+   "shortId": "epic0004",
+   "title": "Epic: a container with no children yet",
+   "status": "todo",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "updatedAt": "2099-01-01T10:00:00Z"
+  },
+  {
+   "id": "ep5",
+   "shortId": "epic0005",
+   "title": "Epic: an urgent container nobody touched",
+   "description": "A real description of the work.",
+   "status": "todo",
+   "priority": "high",
+   "parent": null,
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2020-01-01T10:00:00Z"
+  }
+ ]
+}

@@ -23,7 +23,10 @@ const OPEN = new Set(STATUS_LIST.filter(s=>s.role==="open").map(s=>s.key));
 const DONE = new Set(STATUS_LIST.filter(s=>s.role==="done").map(s=>s.key));
 const MET  = new Set(STATUS_LIST.filter(s=>s.role==="done"||s.role==="rejected").map(s=>s.key));
 const OPEN_ORDER = STATUS_LIST.filter(s=>s.role==="open").map(s=>s.key);   // registry order, for dist + filter
-const PRIO_ORDER = {critical:0, high:1, medium:2, low:3, "":4, null:4, undefined:4};
+// "unset" is what prioKey() returns for no priority; without it every comparator that
+// indexes PRIO_ORDER[prioKey(p)] gets NaN for an unprioritised issue, which is falsy, so the
+// sort silently falls through to its next key and the ordering stops being transitive.
+const PRIO_ORDER = {critical:0, high:1, medium:2, low:3, unset:4, "":4, null:4, undefined:4};
 const PRIO_META = {
   critical:{label:"Critical", color:"var(--critical)", icon:"⏫"},
   high:    {label:"High",     color:"var(--serious)",  icon:"🔼"},
@@ -65,6 +68,49 @@ for(const i of ISSUES){
   const d = (i.description||"").trim();
   i._badDesc = /^\/\S+\.(md|txt|json)$/.test(d) || d==="";
 }
+// ---- signals (thresholds injected from fp-report.conf) ----
+// Each flag names one thing that is wrong with the backlog AS A PLAN, and the Signals tab
+// lists the issues behind it with the fix. They are derived here, once, so the KPI strip,
+// the Focus list and the Signals tab count exactly the same thing.
+// One definition of "epic", shared by the Epics tab and the Focus/Signals rules: an issue
+// with children, OR one whose title contains the whole word "Epic" (a container not yet
+// broken into sub-issues).
+const isEpicTitle = i => /\bepic\b/i.test(i.title||"");
+// Which tabs exist (REPORTS_INCLUDED). Defined here, not in ui.js, because the KPI strip
+// and the Focus bar render before ui.js runs and must not offer a link to an unbuilt tab.
+const REPORTS = __REPORTS_INCLUDED__;
+const reportOf = id => (id||"").replace("panel-","");
+const reportOn = id => !REPORTS.length || REPORTS.includes(reportOf(id));
+const SIGNAL_CONFIG = __SIGNAL_CONFIG__;
+const CRITICAL_BUDGET  = SIGNAL_CONFIG.criticalBudget;
+const URGENT_IDLE_DAYS = SIGNAL_CONFIG.urgentIdleDays;
+const CLAIM_IDLE_DAYS  = SIGNAL_CONFIG.claimIdleDays;
+const BACKLOG = OPEN_ORDER[0];            // the first open status in the registry = "not started"
+const isUrgent = i => i.priority==="critical" || i.priority==="high";
+for(const i of ISSUES){
+  const ch = kids.get(i.id)||[];
+  i._isEpic = ch.length>0 || isEpicTitle(i);
+  // the workstation property is an fp workflow claim ('<machine>:<tree>'); absent on
+  // projects without that extension, and only fetched with labels (FETCH_LABELS)
+  i._claim = (i.properties||{}).workstation || "";
+  // Urgent work nobody has touched. An epic WITH children is left out, because its own
+  // updatedAt only moves when the epic RECORD is edited (the Epics tab rolls activity up
+  // from the children). A childless "Epic:"-titled issue stays in: for it, its own
+  // updatedAt IS the signal, and an idle urgent container must not vanish from every list.
+  i._urgentIdle = i._open && ch.length===0 && isUrgent(i) && i._stale!=null && i._stale>URGENT_IDLE_DAYS;
+  // A claim that went quiet: in progress, but idle past the claim threshold. This is the
+  // issue that looks owned and is not — nobody picks it up because it looks taken.
+  i._staleClaim = i._open && i.status==="in-progress" && i._stale!=null && i._stale>CLAIM_IDLE_DAYS;
+  // Epic status that contradicts its children. Ready: every child is terminal (done or
+  // rejected) yet the epic is open. Behind: the epic still sits in the backlog status while
+  // children are done or already moving.
+  i._epicReady  = i._open && ch.length>0 && ch.every(c=>MET.has(c.status));
+  i._epicBehind = i._open && ch.length>0 && i.status===BACKLOG && !i._epicReady
+    && ch.some(c=>DONE.has(c.status) || (OPEN.has(c.status) && c.status!==BACKLOG));
+}
+const openCritical = ISSUES.filter(i=>i._open && i.priority==="critical");
+const overBudget = openCritical.length > CRITICAL_BUDGET;
+
 const shortOf = id => (byId.get(id)?.shortId) ? IDP+byId.get(id).shortId : (id||"").slice(0,8);
 const openIssues = ISSUES.filter(i=>i._open);
 

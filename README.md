@@ -5,8 +5,9 @@ built from live [fp](https://fiberplane.com) issue state. One shared engine + te
 many projects. Read-only — it never mutates fp.
 
 The report is a fully offline, theme-aware HTML file: a **global search** (id / title /
-spec) at the top, KPI signals, open-backlog composition, a tiled **Themes** tab, an
-expandable **Epics** tab, a filterable/sortable **Issues** tab, an **Orphans** tab for
+spec) at the top, KPI signals (each card a link), open-backlog composition, a **Focus**
+landing tab ranking the open critical and high work, a **Signals** tab listing what is wrong
+with the backlog as a plan, a tiled **Themes** tab, an expandable **Epics** tab, a filterable/sortable **Issues** tab, an **Orphans** tab for
 work left behind in closed epics, and dependency signals.
 It is **responsive** — the same single file lays out as cards on an iPhone-class screen —
 and lets you tap/right-click an issue id to copy it. No external requests — safe to open
@@ -63,6 +64,9 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `FETCH_HISTORY` | replay `fp log` for the Trends/Flow tabs (default `true`; see below) |
 | `HISTORY_LIMIT` | `fp log --limit` (default `200000` — i.e. "everything") |
 | `REPORTS_INCLUDED` | which tabs to build (default: all; see below) |
+| `CRITICAL_BUDGET` | open critical issues allowed before "critical" is flagged as inflated (default `5`) |
+| `URGENT_IDLE_DAYS` | days a critical/high issue may sit untouched before it is flagged (default `30`) |
+| `CLAIM_IDLE_DAYS` | days an in-progress issue may sit untouched before its claim is flagged stale (default `7`) |
 | `THEME_FILE` | colour theme (see below) |
 | `LOGO_LIGHT` / `LOGO_DARK` | brand wordmarks (light / dark theme); omit → neutral default |
 | `OUTPUT_DIR` / `OUTPUT_FILE` | where the HTML lands (default `../reports/fp-report.html`) |
@@ -215,6 +219,42 @@ A raw CSS file of custom properties for `:root` (light) and dark. Two ship in
 
 Copy one and edit the hex values to rebrand — its header lists the required token
 contract. The JS status colour map references the tokens by name, so keep the names.
+
+## Focus — what matters now, on one screen
+
+The landing tab. Every open **critical and high work item** in one ranked list: by priority,
+then work that blocks other open work (unblocking it releases more than itself), then
+unblocked before blocked (a blocked item cannot be started), then the longest idle first.
+Each row carries one line of context: its epic, its age, what it blocks or is blocked by,
+its `workstation` claim when the project's fp workflow sets one, and an idle flag.
+
+**Epics are left out**, on purpose: they are containers, ranked on the Epics tab, and an
+epic's own `updatedAt` only moves when the epic record is edited, so its idle time would
+lie. The critical budget (below) counts epics too, so when it is exceeded the Focus bar shows
+it as a separate pill rather than beside the Focus count.
+
+## Signals — what is wrong with the backlog as a plan
+
+One section per signal, each with its rule, the issues it caught, and the fix. The KPI cards
+above the tabs link here, so a count is never a dead end. An empty signal still renders,
+collapsed, because a vanished section would read as "not checked".
+
+| Signal | Rule | Fix |
+|---|---|---|
+| Critical over budget | more than `CRITICAL_BUDGET` open critical issues | re-rank: when everything is critical, nothing is |
+| Urgent but idle | critical/high, untouched for more than `URGENT_IDLE_DAYS` (epics with children excluded) | start it, or lower it |
+| Stale claims | in progress, untouched for more than `CLAIM_IDLE_DAYS` | finish or release: a quiet claim looks owned |
+| Epics ready to close | open epic whose children are all done or rejected | close it |
+| Epic status behind its children | epic still in the first open status while children are done or moving | move it forward |
+| Unprioritised | open, no priority | rank it |
+| Blocked | open, with a dependency not yet done or rejected | unblock or re-plan |
+| Orphaned | open under a closed epic (grouped on the Orphans tab) | re-home or close |
+| Bad descriptions | empty, or only a file path | write the spec |
+
+The thresholds are validated: a value that is not a whole number aborts the run, because a
+threshold that quietly fell back to its default would make a signal look calmer than the
+backlog is. `workstation` is read from issue properties, which are only fetched with labels
+(`FETCH_LABELS=true`); without it the claim is simply not shown.
 
 ## Epics — sorting the roadmap
 
@@ -399,7 +439,7 @@ pairs actually touch:
 REPORTS_INCLUDED="Themes Epics Issues"        # space- or comma-separated, case-insensitive
 ```
 
-Unset (the default) builds all six: `Themes Epics Issues Orphans Trends Flow`. An
+Unset (the default) builds all eight: `Focus Signals Themes Epics Issues Orphans Trends Flow`. An
 unknown name is reported on stderr and ignored rather than failing the run. Excluded tabs
 are hidden and the first surviving tab becomes the landing page, so the report never opens
 on a blank panel.

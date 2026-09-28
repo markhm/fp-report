@@ -64,6 +64,7 @@ inline_include(){
 th(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_themes.js" "$@"; }
 # orph <html> <check> [args…] — assert on orphan detection in the rendered report (same skip)
 orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orphans.js" "$@"; }
+sg(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_signals.js" "$@"; }
 # ep <html> <check> [args…] — assert on the epic roadmap's sort (same skip)
 ep(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_epics.js" "$@"; }
 # tr <html> <check> [args…] — assert on the cumulative-flow replay (same skip)
@@ -97,7 +98,8 @@ t "a missing include fails loudly"         bad_include
 t "an inline include never ships silently"  inline_include
 
 # ---- themes: the tiles page + how each issue gets its theme ----
-t "Themes is the first, default-active tab"  grep -q '<button class="tab active" data-panel="panel-themes"' "$BASE"
+t "Focus is the first, default-active tab"   grep -q '<button class="tab active" data-panel="panel-focus"' "$BASE"
+t "…and Themes is no longer the landing tab"  bash -c '! grep -q "<button class=\"tab active\" data-panel=\"panel-themes\"" "'"$BASE"'"'
 t "themes panel + tile grid rendered"        grep -q 'id="tiles"' "$BASE"
 t "facet label from THEMES_FILE injected"    grep -q '"label": "Quality"' "$BASE"
 t "theme filter added to the issues tab"     grep -q 'id="fTheme"' "$BASE"
@@ -167,6 +169,57 @@ t "…under every key"                         ep "$EPI" keepsopen epic0001 acti
 # and the id itself is a copy chip for the devices that have no right-click
 t "an epic row carries its display id"       ep "$EPI" html 'data-id="FP-epic0001"'
 t "…and the id is a copy chip"               ep "$EPI" html '<span class="cid">FP-epic0001</span>'
+
+# ---- focus + signals: the plan-level view of the backlog ----
+SIG="$TMP/signals.html"
+render "$SIG" "$ROOT/test/fixture.signals.json" "$TMP/base.conf"
+t "signals fixture renders"                  test -s "$SIG"
+t "Signals tab sits right after Focus"       bash -c '[ "$(grep -n "data-panel=\"panel-focus\"" "'"$SIG"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-signals\"" "'"$SIG"'" | head -1 | cut -d: -f1)" ]'
+t "thresholds injected from the defaults"    grep -q 'const SIGNAL_CONFIG = {"criticalBudget":5,"urgentIdleDays":30,"claimIdleDays":7}' "$SIG"
+# rank: priority, then blocks-other-work, then unblocked before blocked, then longest idle
+t "focus: ranked, epics + deferred left out" sg "$SIG" focus "crit0001,crit0002,high0001,high0003,high0002"
+t "urgent and years idle is flagged"         sg "$SIG" flag crit0002 _urgentIdle yes
+t "…a fresh urgent item is not"              sg "$SIG" flag crit0001 _urgentIdle no
+t "…nor an idle epic (its own date lies)"    sg "$SIG" flag epic0001 _urgentIdle no
+t "…nor idle medium work"                    sg "$SIG" flag medi0001 _urgentIdle no
+t "urgent-idle section lists exactly those"  sg "$SIG" count urgentIdle 3
+t "a quiet in-progress claim is stale"       sg "$SIG" flag high0001 _staleClaim yes
+t "…an active one is not"                    sg "$SIG" flag prog0001 _staleClaim no
+t "…nor idle work nobody has claimed"       sg "$SIG" flag medi0001 _staleClaim no
+t "…and the claim's workstation is shown"    sg "$SIG" html focus "claimed mac-mini:adhoc"
+t "epic with only closed children: ready"    sg "$SIG" flag epic0001 _epicReady yes
+t "backlog epic with a child moving: behind" sg "$SIG" flag epic0002 _epicBehind yes
+t "…an epic already in progress is not"      sg "$SIG" flag epic0003 _epicBehind no
+t "…and a ready epic is not also behind"     sg "$SIG" flag epic0001 _epicBehind no
+t "unprioritised section"                    sg "$SIG" count unprio 2
+t "blocked section"                          sg "$SIG" count blocked 2
+# PRIO_ORDER must rank "unset" last: without it the comparator saw NaN, fell through to
+# idle time, and a years-idle unprioritised issue sorted above high work
+t "…ordered by priority, unset last"         sg "$SIG" order blocked "high0002,unpr0002"
+t "a childless 'Epic:' issue stays off Focus" sg "$SIG" flag epic0004 _isEpic yes
+t "…but an idle one is still urgent-idle"     sg "$SIG" flag epic0005 _urgentIdle yes
+t "the blocker is named on the blocked row"  sg "$SIG" html focus "blocked by <span class=\"cid\">FP-crit0001</span>"
+t "2 critical is within the default budget"  sg "$SIG" over no
+t "…so the budget section lists nothing"     sg "$SIG" count budget 0
+t "an empty signal still renders its section" sg "$SIG" html signals 'id="sig-orphan"'
+t "KPI cards link to their signal"           sg "$SIG" html kpis 'data-sig-go="urgentIdle"'
+t "Enter on a KPI card opens its signal"     sg "$SIG" key kpis Enter urgentIdle yes
+t "…so does Space"                           sg "$SIG" key kpis " " urgentIdle yes
+t "…but another key does nothing"            sg "$SIG" key kpis a urgentIdle no
+t "Enter on the budget pill opens the budget" sg "$SIG" key focusBar Enter budget yes
+SIGX="$TMP/signals-nosig.html"; mkconf "$TMP/nosig.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'REPORTS_INCLUDED="Themes Issues"'
+render "$SIGX" "$ROOT/test/fixture.signals.json" "$TMP/nosig.conf"
+t "no Signals tab: cards do not link to it"  bash -c '! node "'"$ROOT"'/test/assert_signals.js" "'"$SIGX"'" html kpis data-sig-go'
+t "…but a card for a built tab still links"  sg "$SIGX" html kpis 'data-panel-go="panel-issues"'
+SIGB="$TMP/signals-budget.html"; mkconf "$TMP/budget.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'CRITICAL_BUDGET=1'
+render "$SIGB" "$ROOT/test/fixture.signals.json" "$TMP/budget.conf"
+t "CRITICAL_BUDGET from the conf is honoured" sg "$SIGB" over yes
+t "…and over budget lists the criticals"     sg "$SIGB" count budget 2
+t "…and Focus names the budget apart"       sg "$SIGB" html focusBar "2 critical open incl. epics · over the budget of 1"
+bad_threshold(){ mkconf "$TMP/badt.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'URGENT_IDLE_DAYS=thirty'
+  local out; out="$("$ENGINE" -c "$TMP/badt.conf" --issues-file "$FIX" -o "$TMP/badt.html" --no-open 2>&1)" && return 1
+  printf '%s' "$out" | grep -q "URGENT_IDLE_DAYS must be a whole number"; }
+t "a non-numeric threshold aborts, loudly"   bad_threshold
 
 # ---- orphans: open work left behind in a closed epic ----
 t "Orphans tab sits after Issues"            bash -c 'grep -q "data-panel=\"panel-orphans\"" "'"$BASE"'" && [ "$(grep -n "data-panel=\"panel-issues\"" "'"$BASE"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-orphans\"" "'"$BASE"'" | head -1 | cut -d: -f1)" ]'
@@ -274,7 +327,7 @@ t "months start on the 1st"                   flow "$TRD" start month 2026-06-20
 t "days are their own bucket"                 flow "$TRD" start day 2026-06-20 2026-06-20
 
 # ---- REPORTS_INCLUDED: choose which tabs get built ----
-t "unset REPORTS_INCLUDED builds them all"   grep -q 'const REPORTS = \["themes","epics","issues","orphans","trends","flow"\]' "$BASE"
+t "unset REPORTS_INCLUDED builds them all"   grep -q 'const REPORTS = \["focus","signals","themes","epics","issues","orphans","trends","flow"\]' "$BASE"
 RI="$TMP/subset.html"; mkconf "$TMP/ri.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'REPORTS_INCLUDED="Themes, Issues"'
 render_h "$RI" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/ri.conf"
 t "a subset renders"                         test -s "$RI"

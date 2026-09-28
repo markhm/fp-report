@@ -1,7 +1,6 @@
 // ---- epic roadmap ----
 // An "epic" = any issue with children, OR any issue whose title contains the whole
-// word "Epic" (e.g. "Epic: …" containers not yet broken into sub-issues).
-const isEpicTitle = i => /\bepic\b/i.test(i.title||"");
+// word "Epic" (isEpicTitle, model.js — shared with the Focus and Signals rules).
 const epicTs = i => Date.parse(i.updatedAt||"") || 0;
 const epics = ISSUES.filter(i=>kids.has(i.id) || isEpicTitle(i)).map(e=>{
   const ch = kids.get(e.id) || [];

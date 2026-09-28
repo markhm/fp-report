@@ -14,7 +14,7 @@ const fs = require("fs");
 const el = () => ({
   innerHTML: "", textContent: "", value: "", hidden: false, dataset: {}, style: {},
   classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-  addEventListener() {}, insertAdjacentHTML() {}, toggleAttribute() {}, scrollIntoView() {},
+  addEventListener(type, fn) { (this.__l ||= {})[type] = fn; }, insertAdjacentHTML() {}, toggleAttribute() {}, scrollIntoView() {},
   querySelectorAll: () => [], querySelector: () => el(), closest: () => null,
   getAttribute: () => null, setAttribute() {}, focus() {}, remove() {}, appendChild() {}, select() {},
 });

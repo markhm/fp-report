@@ -52,7 +52,9 @@ __THEME_CSS__
   </section>
 
   <nav class="tabs" id="tabs">
-    <button class="tab active" data-panel="panel-themes" type="button">Themes <span class="n" id="tabThemesN"></span></button>
+    <button class="tab active" data-panel="panel-focus" type="button">Focus <span class="n" id="tabFocusN"></span></button>
+    <button class="tab" data-panel="panel-signals" type="button">Signals <span class="n" id="tabSignalsN"></span></button>
+    <button class="tab" data-panel="panel-themes" type="button">Themes <span class="n" id="tabThemesN"></span></button>
     <button class="tab" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
     <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
     <button class="tab" data-panel="panel-orphans" type="button">Orphans <span class="n" id="tabOrphansN"></span></button>
@@ -61,7 +63,18 @@ __THEME_CSS__
     <label class="chk"><input type="checkbox" id="hideDone" checked> hide done</label>
   </nav>
 
-  <div class="panel" id="panel-themes">
+  <div class="panel" id="panel-focus">
+    <h2>Focus <span class="sub" style="text-transform:none;letter-spacing:0">— every open critical and high work item, ranked: priority, then what blocks other work, then unblocked before blocked, then longest idle · epics are on the Epics tab</span></h2>
+    <div class="facets" id="focusBar"></div>
+    <section class="card" id="focus"></section>
+  </div>
+
+  <div class="panel" id="panel-signals" hidden>
+    <h2>Signals <span class="sub" style="text-transform:none;letter-spacing:0">— what is wrong with the backlog as a plan: each section gives the rule, the issues it caught, and the fix · the KPI cards above link here</span></h2>
+    <div id="signals"></div>
+  </div>
+
+  <div class="panel" id="panel-themes" hidden>
     <h2>Themes <span class="sub" style="text-transform:none;letter-spacing:0">— work items by priority and status, epics counted separately · tick &ldquo;hide done&rdquo; to see live work only · click a tile to see its open issues</span></h2>
     <div class="facets" id="facetPicker"></div>
     <section class="tiles" id="tiles"></section>
@@ -142,6 +155,8 @@ __THEME_CSS__
 <!--#include app/epics.js -->
 <!--#include app/orphans.js -->
 <!--#include app/table.js -->
+<!--#include app/focus.js -->
+<!--#include app/signals.js -->
 <!--#include app/themes.js -->
 <!--#include app/deps.js -->
 <!--#include app/trends.js -->
