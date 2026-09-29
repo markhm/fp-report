@@ -67,6 +67,7 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `CRITICAL_BUDGET` | open critical issues allowed before "critical" is flagged as inflated (default `5`) |
 | `URGENT_IDLE_DAYS` | days a critical/high issue may sit untouched before it is flagged (default `30`) |
 | `CLAIM_IDLE_DAYS` | days an in-progress issue may sit untouched before its claim is flagged stale (default `7`) |
+| `REVIEW_TITLE_RE` | children whose title matches (case-insensitive) are reviews of their parent, not scope (default `^code review\b`; empty = off) |
 | `THEME_FILE` | colour theme (see below) |
 | `LOGO_LIGHT` / `LOGO_DARK` | brand wordmarks (light / dark theme); omit → neutral default |
 | `OUTPUT_DIR` / `OUTPUT_FILE` | where the HTML lands (default `../reports/fp-report.html`) |
@@ -244,12 +245,24 @@ collapsed, because a vanished section would read as "not checked".
 | Critical over budget | more than `CRITICAL_BUDGET` open critical issues | re-rank: when everything is critical, nothing is |
 | Urgent but idle | critical/high, untouched for more than `URGENT_IDLE_DAYS` (epics with children excluded) | start it, or lower it |
 | Stale claims | in progress, untouched for more than `CLAIM_IDLE_DAYS` | finish or release: a quiet claim looks owned |
-| Epics ready to close | open epic whose children are all done or rejected | close it |
-| Epic status behind its children | epic still in the first open status while children are done or moving | move it forward |
+| Epics ready to close | open epic whose children are all done or rejected (reviews not counted) | close it, or add the work it still waits for |
+| Epic status behind its children | epic still in the first open status while a child is moving (reviews not counted) | move it forward |
 | Unprioritised | open, no priority | rank it |
 | Blocked | open, with a dependency not yet done or rejected | unblock or re-plan |
 | Orphaned | open under a closed epic (grouped on the Orphans tab) | re-home or close |
 | Bad descriptions | empty, or only a file path | write the spec |
+
+**Review children are not scope.** Where the fp workflow files a code review as a child of
+the work item it reviews, counting it would make that work item an "epic" (dropping it from
+Focus) whose every child is done ("ready to close") while its own work is still open.
+`REVIEW_TITLE_RE` names those children; they are left out of the epic definition, both epic
+signals, the Epics tab's counts, the Themes tiles and the Issues table's "no children"
+filter. The pattern runs in the browser as a JavaScript `RegExp` (case-insensitive), so the
+engine validates it in that dialect — with `node` when it is on `PATH`, otherwise with a
+Python compile that also refuses `(?…` flags and groups — and always refuses `\A`/`\Z`/`\z`,
+which JavaScript silently reads as letters. A pattern that still fails in the browser
+switches the exclusion off, and the Signals tab says so, rather than blanking the page. A done child alone does not mark an epic as behind: a partly done epic with
+nothing in motion is paused, and its backlog status says so truthfully.
 
 The thresholds are validated: a value that is not a whole number aborts the run, because a
 threshold that quietly fell back to its default would make a signal look calmer than the

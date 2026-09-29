@@ -2,8 +2,8 @@
 // An "epic" = any issue with children, OR any issue whose title contains the whole
 // word "Epic" (isEpicTitle, model.js — shared with the Focus and Signals rules).
 const epicTs = i => Date.parse(i.updatedAt||"") || 0;
-const epics = ISSUES.filter(i=>kids.has(i.id) || isEpicTitle(i)).map(e=>{
-  const ch = kids.get(e.id) || [];
+const epics = ISSUES.filter(i=>i._isEpic).map(e=>{
+  const ch = scopeOf(e);              // reviews of the epic are not its scope (model.js)
   const done = ch.filter(c=>DONE.has(c.status)).length;
   const openc = ch.filter(c=>c._open).length;
   const other = ch.length-done-openc;
@@ -74,7 +74,7 @@ function renderEpics(){
   document.getElementById("epics").innerHTML = ordered.length ? ordered.map(x=>{
     const t=x.total, dpct=t?x.done/t*100:0, opct=t?x.openc/t*100:0, rpct=t?x.other/t*100:0;
     const pm = PRIO_META[x.hp];
-    const ch = (kids.get(x.e.id)||[]).slice().sort((a,b)=>
+    const ch = scopeOf(x.e).slice().sort((a,b)=>
       ((a._open?0:1)-(b._open?0:1)) ||
       (PRIO_ORDER[prioKey(a.priority)]-PRIO_ORDER[prioKey(b.priority)]) ||
       (a.status<b.status?-1:a.status>b.status?1:0));

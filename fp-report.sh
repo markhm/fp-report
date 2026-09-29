@@ -176,6 +176,9 @@ main() {
     CRITICAL_BUDGET=5                              # more open critical issues than this = "critical" has lost its meaning
     URGENT_IDLE_DAYS=30                            # a critical/high issue untouched this long is flagged
     CLAIM_IDLE_DAYS=7                              # an in-progress claim untouched this long is flagged stale
+    # Children whose title matches this (case-insensitive) are reviews OF their parent, not
+    # scope: they do not make the parent an epic, and a finished review does not finish it.
+    REVIEW_TITLE_RE='^code review\b'
     # shellcheck source=/dev/null
     . "$CONF"
     [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
@@ -373,7 +376,7 @@ PY
     LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
     THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" \
     REPORTS="$REPORTS" CRITICAL_BUDGET="$CRITICAL_BUDGET" URGENT_IDLE_DAYS="$URGENT_IDLE_DAYS" \
-    CLAIM_IDLE_DAYS="$CLAIM_IDLE_DAYS" python3 - <<'PY'
+    CLAIM_IDLE_DAYS="$CLAIM_IDLE_DAYS" REVIEW_TITLE_RE="$REVIEW_TITLE_RE" python3 - <<'PY'
 import os, re, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -427,9 +430,42 @@ def whole(key):
     if not re.fullmatch(r"\d+", v):
         raise SystemExit(f"fp-report: {key} must be a whole number, got {v!r}")
     return int(v)
+# An empty pattern switches the review exclusion off; an invalid one is a config error.
+# The pattern RUNS in the browser (JavaScript RegExp, flag i), so it is validated in that
+# dialect: by node when node is on PATH, which settles it exactly. Without node, a Python
+# compile plus an escape-aware refusal of the constructs JavaScript rejects or reads
+# differently ('(?i)', '(?P<n>…)': a page-killing SyntaxError; '\A' '\Z' '\z': silently
+# the LETTERS A, Z, z). Either way '\A'-style anchors are refused: JavaScript accepts them,
+# so node alone would pass a pattern that never matches what was meant. The page also
+# catches a pattern that still fails and says so (model.js).
+ODD = r"(?:^|[^\\])(?:\\\\)*"          # an unescaped position: even run of backslashes before
+def review_re():
+    v = os.environ.get("REVIEW_TITLE_RE", "")
+    if not v:
+        return v
+    anchor = re.search(ODD + r"\\[AZz]", v)
+    if anchor:
+        raise SystemExit(f"fp-report: REVIEW_TITLE_RE uses {anchor.group(0)[-2:]!r}, a Python anchor that "
+                         "JavaScript reads as a plain letter (the pattern runs in the browser): use ^ or $")
+    import shutil, subprocess
+    if shutil.which("node"):
+        r = subprocess.run(["node", "-e", "try{new RegExp(process.argv[1],'i')}catch(e){console.error(e.message);process.exit(1)}", v],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            raise SystemExit("fp-report: REVIEW_TITLE_RE is not a valid JavaScript regex (the pattern runs "
+                             f"in the browser): {r.stderr.strip()}")
+        return v
+    try: re.compile(v)
+    except re.error as e: raise SystemExit(f"fp-report: REVIEW_TITLE_RE is not a valid regex: {e}")
+    group = re.search(ODD + r"\(\?(?![:=!]|<[=!])", v)
+    if group:
+        raise SystemExit("fp-report: REVIEW_TITLE_RE uses '(?' syntax that JavaScript reads differently or "
+                         "not at all (the pattern runs in the browser, case-insensitive already)")
+    return v
 signals = json.dumps({"criticalBudget": whole("CRITICAL_BUDGET"),
                       "urgentIdleDays": whole("URGENT_IDLE_DAYS"),
-                      "claimIdleDays":  whole("CLAIM_IDLE_DAYS")}, separators=(",", ":"))
+                      "claimIdleDays":  whole("CLAIM_IDLE_DAYS"),
+                      "reviewTitleRe":  review_re()}, separators=(",", ":"))
 theme = open(os.environ["THEME_PATH"], encoding="utf-8").read().rstrip("\n")   # raw CSS custom properties
 html = (tpl.replace("__FP_DATA__", data)
            .replace("__STATUS_CONFIG__", status)

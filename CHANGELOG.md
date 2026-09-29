@@ -18,6 +18,17 @@ template, or tooling — not the issue data a given report happens to show.
   gain a `tools/` prefix.
 
 ### Added
+- **Review children are not scope** (`REVIEW_TITLE_RE`, default `^code review\b`): a child
+  that reviews its parent no longer makes the parent an epic, so a work item with one
+  finished review is neither dropped from Focus nor flagged "ready to close". On a live
+  backlog this cleared 3 of 4 "ready" flags, each a work item whose only child was its
+  finished review. The same scope now drives the Epics tab counts, the Themes tiles and
+  the Issues table's "no children" filter. The pattern is validated in the dialect that runs
+  it (JavaScript, via `node` when present), and a pattern that still fails in the browser
+  disables the exclusion visibly instead of blanking the page.
+- **"Epic status behind" needs a child in motion**, not merely a done one: a partly done
+  epic with nothing moving is paused, and Backlog is the truthful status for it. On the
+  same backlog this removed all 13 flags, none of which had a child in progress.
 - **Focus tab, now the landing tab**: every open critical and high work item in one ranked
   list (priority, then blocks-other-work, then unblocked before blocked, then longest idle),
   each row with its epic, age, blockers and `workstation` claim. Epics are excluded: their

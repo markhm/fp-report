@@ -235,6 +235,114 @@
    "dependencies": [],
    "createdAt": "2020-01-01T10:00:00Z",
    "updatedAt": "2020-01-01T10:00:00Z"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": null,
+   "id": "w1",
+   "shortId": "high0004",
+   "title": "High work item with a finished review",
+   "status": "todo",
+   "priority": "high"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": "w1",
+   "id": "r1",
+   "shortId": "revw0001",
+   "title": "Code review: high work item",
+   "status": "done",
+   "priority": "low"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": null,
+   "id": "e7",
+   "shortId": "epic0007",
+   "title": "Paused epic: one child done, nothing moving",
+   "status": "todo",
+   "priority": "medium"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": "e7",
+   "id": "k1",
+   "shortId": "kdon0001",
+   "title": "Done child of a paused epic",
+   "status": "done",
+   "priority": "low"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": "e7",
+   "id": "k2",
+   "shortId": "ktod0001",
+   "title": "Not-started child of a paused epic",
+   "status": "todo",
+   "priority": "low"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": "e7",
+   "id": "r2",
+   "shortId": "revw0002",
+   "title": "Code review: an in-flight review is not the epic moving",
+   "status": "in-progress",
+   "priority": "low"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": null,
+   "id": "w2",
+   "shortId": "high0005",
+   "title": "High work item under review",
+   "status": "todo",
+   "priority": "high"
+  },
+  {
+   "description": "A real description of the work.",
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z",
+   "dependencies": [],
+   "parent": "w2",
+   "id": "r3",
+   "shortId": "revw0003",
+   "title": "Code review: work item under review",
+   "status": "in-progress",
+   "priority": "low"
+  },
+  {
+   "id": "r4",
+   "shortId": "revw0004",
+   "title": "Code review: the closed-out epic",
+   "description": "A real description of the work.",
+   "status": "done",
+   "priority": "low",
+   "parent": "e1",
+   "dependencies": [],
+   "createdAt": "2020-01-01T10:00:00Z",
+   "updatedAt": "2099-01-01T10:00:00Z"
   }
  ]
 }

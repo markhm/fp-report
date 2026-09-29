@@ -7,11 +7,15 @@
 const byPrioThenIdle = (a,b) =>
   (PRIO_ORDER[prioKey(a.priority)]-PRIO_ORDER[prioKey(b.priority)]) || ((b._stale??-1)-(a._stale??-1));
 const childSummary = e => {
-  const ch = kids.get(e.id)||[];
+  const ch = scopeOf(e);
   const done = ch.filter(c=>DONE.has(c.status)).length;
   const moving = ch.filter(c=>OPEN.has(c.status) && c.status!==BACKLOG).length;
   return `${done}/${ch.length} children done${moving?` · ${moving} in motion`:""}`;
 };
+// when the browser could not compile REVIEW_TITLE_RE, reviews ARE counted: both epic rules say so
+const reviewNote = REVIEW_RE_ERROR
+  ? ` — REVIEW_TITLE_RE failed in this browser (${REVIEW_RE_ERROR}), so reviews ARE counted`
+  : " (reviews not counted)";
 const SIGNALS = [
   { key:"budget", title:"Critical over budget",
     rule:`more than ${CRITICAL_BUDGET} open critical issues (CRITICAL_BUDGET)`,
@@ -27,11 +31,11 @@ const SIGNALS = [
     fix:"finish it or release it — a quiet claim looks owned, so nobody else picks it up",
     items: ISSUES.filter(i=>i._staleClaim), meta: focusMeta },
   { key:"epicReady", title:"Epics ready to close",
-    rule:"open epic whose children are all done or rejected",
+    rule:"open epic whose children are all done or rejected" + reviewNote,
     fix:"close the epic (or add the work it is still waiting for as a child)",
     items: ISSUES.filter(i=>i._epicReady), meta: childSummary },
   { key:"epicBehind", title:"Epic status behind its children",
-    rule:`epic still in ${(STATUS_META[BACKLOG]||{label:BACKLOG}).label} while children are done or in motion`,
+    rule:`epic still in ${(STATUS_META[BACKLOG]||{label:BACKLOG}).label} while a child is in motion` + reviewNote,
     fix:"move the epic forward so the roadmap shows it is underway",
     items: ISSUES.filter(i=>i._epicBehind), meta: childSummary },
   { key:"unprio", title:"Unprioritised",

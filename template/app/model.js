@@ -87,8 +87,20 @@ const URGENT_IDLE_DAYS = SIGNAL_CONFIG.urgentIdleDays;
 const CLAIM_IDLE_DAYS  = SIGNAL_CONFIG.claimIdleDays;
 const BACKLOG = OPEN_ORDER[0];            // the first open status in the registry = "not started"
 const isUrgent = i => i.priority==="critical" || i.priority==="high";
+// A child that is a REVIEW of its parent (REVIEW_TITLE_RE, e.g. "Code review: …") is not
+// part of the parent's scope. Counting it made a work item with one finished review look
+// like an epic whose every child is done — "ready to close" while its own work was open —
+// and dropped that work item from Focus as if it were a container.
+// The engine rejects patterns JavaScript reads differently, but a pattern that still fails to
+// compile here must not take the whole page down with it: the exclusion is switched off and
+// the Signals tab says so, rather than every tab rendering blank.
+let REVIEW_RE = null, REVIEW_RE_ERROR = "";
+try { REVIEW_RE = SIGNAL_CONFIG.reviewTitleRe ? new RegExp(SIGNAL_CONFIG.reviewTitleRe, "i") : null; }
+catch(e) { REVIEW_RE_ERROR = String(e && e.message || e); }
+const isReview = i => !!REVIEW_RE && REVIEW_RE.test(i.title||"");
+const scopeOf = i => (kids.get(i.id)||[]).filter(c=>!isReview(c));
 for(const i of ISSUES){
-  const ch = kids.get(i.id)||[];
+  const ch = scopeOf(i);
   i._isEpic = ch.length>0 || isEpicTitle(i);
   // the workstation property is an fp workflow claim ('<machine>:<tree>'); absent on
   // projects without that extension, and only fetched with labels (FETCH_LABELS)
@@ -101,12 +113,14 @@ for(const i of ISSUES){
   // A claim that went quiet: in progress, but idle past the claim threshold. This is the
   // issue that looks owned and is not — nobody picks it up because it looks taken.
   i._staleClaim = i._open && i.status==="in-progress" && i._stale!=null && i._stale>CLAIM_IDLE_DAYS;
-  // Epic status that contradicts its children. Ready: every child is terminal (done or
-  // rejected) yet the epic is open. Behind: the epic still sits in the backlog status while
-  // children are done or already moving.
+  // Epic status that contradicts its children (reviews excluded, see scopeOf). Ready: every
+  // child is terminal (done or rejected) yet the epic is open. Behind: the epic still sits
+  // in the backlog status while a child is MOVING (an open status past the backlog). A done
+  // child alone is not drift: a partly-done epic with nothing in motion is paused, and
+  // Backlog says so truthfully.
   i._epicReady  = i._open && ch.length>0 && ch.every(c=>MET.has(c.status));
   i._epicBehind = i._open && ch.length>0 && i.status===BACKLOG && !i._epicReady
-    && ch.some(c=>DONE.has(c.status) || (OPEN.has(c.status) && c.status!==BACKLOG));
+    && ch.some(c=>OPEN.has(c.status) && c.status!==BACKLOG);
 }
 const openCritical = ISSUES.filter(i=>i._open && i.priority==="critical");
 const overBudget = openCritical.length > CRITICAL_BUDGET;

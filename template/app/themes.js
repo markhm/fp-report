@@ -83,7 +83,7 @@ function themeStats(f){
   const bucket = new Map([...f.themes, UNTHEMED].map(t=>[t.key, {t, all:[], open:[], epics:[]}]));
   for(const i of ISSUES){
     const b = bucket.get(f._index.get(i.id).key); if(!b) continue;
-    if(kids.has(i.id)){ b.epics.push(i); continue; }
+    if(scopeOf(i).length){ b.epics.push(i); continue; }   // a review child does not make an epic
     b.all.push(i); if(i._open) b.open.push(i);
   }
   return [...bucket.values()].map(b=>({

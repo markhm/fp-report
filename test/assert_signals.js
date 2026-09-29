@@ -7,6 +7,10 @@
  *     count  <signalKey> <n>       issues listed in one Signals section
  *     order  <signalKey> <sid,…>   issues in one Signals section, in listed order
  *     key    <nodeId> <key> <sig> <yes|no>  pressing <key> on #nodeId opens signal <sig>
+ *     inEpics <sid> <yes|no>       listed on the Epics tab
+ *     epicTotal <sid> <n>          child total the Epics tab counts for an epic
+ *     inTable <sid> <yes|no>       listed in the Issues table under the default filters
+ *     themeEpics <n>               issues the Themes tiles count as epics
  *     over   <yes|no>              is the critical budget exceeded?
  *     html   <nodeId> <substring>  the rendered markup of #nodeId contains this
  *
@@ -48,6 +52,20 @@ eval(app + `
     else { h({ key: A[1], preventDefault() {}, target: link });
       const got = hit ? "yes" : "no";
       __r = { ok: got === A[3], msg: "key " + JSON.stringify(A[1]) + " on #" + A[0] + ": expected " + A[3] + ", got " + got }; }
+  } else if (CHECK === "inEpics") {
+    const got = epics.some(x => x.e.shortId === A[0]) ? "yes" : "no";
+    __r = { ok: got === A[1], msg: A[0] + " on the Epics tab: expected " + A[1] + ", got " + got };
+  } else if (CHECK === "epicTotal") {
+    const x = epics.find(x => x.e.shortId === A[0]);
+    const got = x ? x.total : -1;
+    __r = { ok: got === Number(A[1]), msg: A[0] + " Epics-tab child total: expected " + A[1] + ", got " + got };
+  } else if (CHECK === "inTable") {
+    const got = rows().some(i => i.shortId === A[0]) ? "yes" : "no";
+    __r = { ok: got === A[1], msg: A[0] + " in the default Issues table: expected " + A[1] + ", got " + got };
+  } else if (CHECK === "themeEpics") {
+    const f = facetOf(facetKey); const st = f ? themeStats(f) : [];
+    const got = st.reduce((n, b) => n + (b.epics || 0), 0);
+    __r = { ok: got === Number(A[0]), msg: "epics counted on Themes: expected " + A[0] + ", got " + got };
   } else if (CHECK === "over") {
     const got = overBudget ? "yes" : "no";
     __r = { ok: got === A[0], msg: "over budget: expected " + A[0] + ", got " + got };

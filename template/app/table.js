@@ -42,7 +42,7 @@ function rows(){
     if(F.stale && !i._isStale) return false;
     if(F.unprio && !i._unprio) return false;
     if(F.noParent && i.parent) return false;
-    if(F.noChildren && kids.has(i.id)) return false;
+    if(F.noChildren && scopeOf(i).length) return false;   // a review child is not a child here
     return true;
   });
   const col = COLS.find(c=>c.k===sortK);

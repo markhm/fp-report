@@ -175,9 +175,9 @@ SIG="$TMP/signals.html"
 render "$SIG" "$ROOT/test/fixture.signals.json" "$TMP/base.conf"
 t "signals fixture renders"                  test -s "$SIG"
 t "Signals tab sits right after Focus"       bash -c '[ "$(grep -n "data-panel=\"panel-focus\"" "'"$SIG"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-signals\"" "'"$SIG"'" | head -1 | cut -d: -f1)" ]'
-t "thresholds injected from the defaults"    grep -q 'const SIGNAL_CONFIG = {"criticalBudget":5,"urgentIdleDays":30,"claimIdleDays":7}' "$SIG"
+t "thresholds injected from the defaults"    grep -qF 'const SIGNAL_CONFIG = {"criticalBudget":5,"urgentIdleDays":30,"claimIdleDays":7,"reviewTitleRe":"^code review\\b"}' "$SIG"
 # rank: priority, then blocks-other-work, then unblocked before blocked, then longest idle
-t "focus: ranked, epics + deferred left out" sg "$SIG" focus "crit0001,crit0002,high0001,high0003,high0002"
+t "focus: ranked, epics + deferred left out" sg "$SIG" focus "crit0001,crit0002,high0001,high0003,high0004,high0005,high0002"
 t "urgent and years idle is flagged"         sg "$SIG" flag crit0002 _urgentIdle yes
 t "…a fresh urgent item is not"              sg "$SIG" flag crit0001 _urgentIdle no
 t "…nor an idle epic (its own date lies)"    sg "$SIG" flag epic0001 _urgentIdle no
@@ -191,6 +191,14 @@ t "epic with only closed children: ready"    sg "$SIG" flag epic0001 _epicReady 
 t "backlog epic with a child moving: behind" sg "$SIG" flag epic0002 _epicBehind yes
 t "…an epic already in progress is not"      sg "$SIG" flag epic0003 _epicBehind no
 t "…and a ready epic is not also behind"     sg "$SIG" flag epic0001 _epicBehind no
+# a review is not scope: a work item with only a finished review is neither an epic nor "ready"
+t "a review child does not make an epic"     sg "$SIG" flag high0004 _isEpic no
+t "…so its finished review is not 'ready'"   sg "$SIG" flag high0004 _epicReady no
+t "…and a work item under review is not on the Epics tab" sg "$SIG" inEpics high0005 no
+t "…while a real epic still is"              sg "$SIG" inEpics epic0002 yes
+# a done child in a paused epic is not drift; only a child in motion is (and a review is not one)
+t "a paused epic is not behind"              sg "$SIG" flag epic0007 _epicBehind no
+t "epics-behind lists only the moving one"   sg "$SIG" count epicBehind 1
 t "unprioritised section"                    sg "$SIG" count unprio 2
 t "blocked section"                          sg "$SIG" count blocked 2
 # PRIO_ORDER must rank "unset" last: without it the comparator saw NaN, fell through to
@@ -220,6 +228,55 @@ bad_threshold(){ mkconf "$TMP/badt.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'URGENT
   local out; out="$("$ENGINE" -c "$TMP/badt.conf" --issues-file "$FIX" -o "$TMP/badt.html" --no-open 2>&1)" && return 1
   printf '%s' "$out" | grep -q "URGENT_IDLE_DAYS must be a whole number"; }
 t "a non-numeric threshold aborts, loudly"   bad_threshold
+bad_review_re(){ mkconf "$TMP/badr.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='(unclosed'"
+  local out; out="$("$ENGINE" -c "$TMP/badr.conf" --issues-file "$FIX" -o "$TMP/badr.html" --no-open 2>&1)" && return 1
+  printf '%s' "$out" | grep -q "REVIEW_TITLE_RE is not a valid"; }
+t "an invalid REVIEW_TITLE_RE aborts"        bad_review_re
+SIGN="$TMP/signals-noreview.html"; mkconf "$TMP/norev.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE=''"
+render "$SIGN" "$ROOT/test/fixture.signals.json" "$TMP/norev.conf"
+t "an empty REVIEW_TITLE_RE counts reviews"  sg "$SIGN" flag high0004 _isEpic yes
+# the pattern runs as a JavaScript RegExp; Python-only syntax must abort, not break the page
+rev_re_aborts(){ mkconf "$TMP/rr.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='$1'"
+  local out; out="$("$ENGINE" -c "$TMP/rr.conf" --issues-file "$FIX" -o "$TMP/rr.html" --no-open 2>&1)" && return 1
+  printf '%s' "$out" | grep -q "JavaScript"; }
+t "REVIEW_TITLE_RE: (?i) inline flag aborts" rev_re_aborts '(?i)^code review'
+t "…a Python named group aborts"             rev_re_aborts '^(?P<k>code) review'
+t "…a Python \A anchor aborts"              rev_re_aborts '\Acode review'
+rev_re_ok(){ mkconf "$TMP/ro.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='(?:code|design) review'"
+  "$ENGINE" -c "$TMP/ro.conf" --issues-file "$FIX" -o "$TMP/ro.html" --no-open >/dev/null 2>&1; }
+t "…while a non-capturing group is fine"     rev_re_ok
+rev_re_ok2(){ mkconf "$TMP/ro2.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='^\\(?code review'"
+  "$ENGINE" -c "$TMP/ro2.conf" --issues-file "$FIX" -o "$TMP/ro2.html" --no-open >/dev/null 2>&1; }
+t "…and an escaped paren is not a '(?' group" rev_re_ok2
+# node validates in the dialect that runs the pattern: a JS named group is valid there even
+# though this Python rejects the syntax — the Python-only fallback would refuse it
+rev_re_jsonly(){ command -v node >/dev/null 2>&1 || return 0
+  mkconf "$TMP/rj.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='^(?<k>code) review'"
+  "$ENGINE" -c "$TMP/rj.conf" --issues-file "$FIX" -o "$TMP/rj.html" --no-open >/dev/null 2>&1; }
+t "…a JS named group passes (checked by node)" rev_re_jsonly
+# without node the engine falls back to a Python compile plus a syntax refusal: still loud
+rev_re_nonode(){
+  # a PATH with python3 and the base system only, so no node (mise shims included) is found
+  local bin="$TMP/nonode-bin"; mkdir -p "$bin"
+  ln -sf "$(python3 -c 'import sys,os;print(os.path.realpath(sys.executable))')" "$bin/python3"
+  # the premise must hold, checked in a FRESH shell: this one's command hash remembers node
+  env PATH="$bin:/usr/bin:/bin" /bin/sh -c 'command -v node' >/dev/null 2>&1 && return 1
+  mkconf "$TMP/rn.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' "REVIEW_TITLE_RE='(?i)^code review'"
+  local out; out="$(PATH="$bin:/usr/bin:/bin" "$ENGINE" -c "$TMP/rn.conf" --issues-file "$FIX" -o "$TMP/rn.html" --no-open 2>&1)" && return 1
+  printf '%s' "$out" | grep -q "'(?' syntax that JavaScript reads"; }
+t "…and without node, (?i) still aborts"     rev_re_nonode
+# a pattern that still fails in the browser disables the exclusion and says so; the page lives
+SIGR="$TMP/signals-badre.html"
+sed 's|"reviewTitleRe":"[^"]*"|"reviewTitleRe":"(unclosed"|' "$SIG" > "$SIGR"
+t "a browser-invalid pattern keeps the page up" sg "$SIGR" flag high0004 _isEpic yes
+t "…and the Signals tab names the failure"   sg "$SIGR" html signals "REVIEW_TITLE_RE failed in this browser"
+t "…in both epic rules, not just one"        bash -c '! node "'"$ROOT"'/test/assert_signals.js" "'"$SIGR"'" html signals "(reviews not counted)"'
+# every child count goes through the same scope: Signals summary, Epics tab, Themes, Issues table
+t "signals child summary leaves reviews out" sg "$SIG" html signals "1/2 children done"
+t "the Epics tab total leaves reviews out"   sg "$SIG" epicTotal epic0001 2
+# 4 real epics (epic0001/2/3/7); counting a review parent would add high0004 and high0005
+t "Themes does not count a review parent"    sg "$SIG" themeEpics 4
+t "Issues table keeps a review parent"       sg "$SIG" inTable high0004 yes
 
 # ---- orphans: open work left behind in a closed epic ----
 t "Orphans tab sits after Issues"            bash -c 'grep -q "data-panel=\"panel-orphans\"" "'"$BASE"'" && [ "$(grep -n "data-panel=\"panel-issues\"" "'"$BASE"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-orphans\"" "'"$BASE"'" | head -1 | cut -d: -f1)" ]'
