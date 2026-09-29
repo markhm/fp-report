@@ -20,7 +20,21 @@
 
 set -euo pipefail
 
-SELF_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve the symlink chain first: installed as a symlink (e.g. ~/bin/fp-report-deploy), the
+# link's own directory holds no engine, and `cd -P` on it only resolves the DIRECTORY.
+# Same resolver as fp-report.sh (its "locate this tool's own dir" block) — keep the two in
+# step. It cannot simply be reused: the engine has to be FOUND before it can be sourced.
+# The directory of every hop is kept, as the engine does, so that a project-local link
+# (<project>/scripts/fp-report-deploy) finds that project's conf from any cwd.
+SOURCE="${BASH_SOURCE[0]}"
+DEPLOY_INVOKE_DIRS=()
+while [ -h "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    DEPLOY_INVOKE_DIRS+=("$DIR")
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SELF_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 ENGINE="$SELF_DIR/fp-report.sh"
 [ -f "$ENGINE" ] || { echo "Error: engine not found: $ENGINE" >&2; exit 1; }
 
@@ -29,6 +43,11 @@ ENGINE="$SELF_DIR/fp-report.sh"
 # returns 1 when sourced (not executed), so `|| true` keeps that from tripping set -e.
 # shellcheck source=/dev/null
 . "$ENGINE" || true
+# Sourcing ran the engine's own resolver against ITS file (never a symlink), which leaves
+# INVOKE_DIRS empty; find_beside_symlink must see THIS script's hops instead. Without this, a
+# project-local deploy link run from elsewhere fell through to find_conf, i.e. to whichever
+# project the cwd happened to be in.
+INVOKE_DIRS=(${DEPLOY_INVOKE_DIRS[@]+"${DEPLOY_INVOKE_DIRS[@]}"})
 
 # ---- args ----
 CONF_ARG=""; MSG=""; DRY_RUN=false

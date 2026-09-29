@@ -224,6 +224,29 @@ render "$SIGB" "$ROOT/test/fixture.signals.json" "$TMP/budget.conf"
 t "CRITICAL_BUDGET from the conf is honoured" sg "$SIGB" over yes
 t "…and over budget lists the criticals"     sg "$SIGB" count budget 2
 t "…and Focus names the budget apart"       sg "$SIGB" html focusBar "2 critical open incl. epics · over the budget of 1"
+# installed as a symlink elsewhere (tools/install.sh, mobile-home/bin), the deploy script
+# must still find the engine beside its REAL file, not beside the link
+deploy_via_symlink(){ local d="$TMP/linkbin"; mkdir -p "$d"
+  ln -sf "$ROOT/fp-report-deploy.sh" "$d/fp-report-deploy"
+  "$d/fp-report-deploy" --help >/dev/null 2>&1; }
+t "fp-report-deploy works through a symlink" deploy_via_symlink
+# a RELATIVE link, two hops deep (a link to a link), exercises the relative-target branch
+deploy_via_relative_chain(){ local d="$TMP/relchain"; mkdir -p "$d/a" "$d/b"
+  ln -sf "$ROOT/fp-report-deploy.sh" "$d/a/real-link"
+  ( cd "$d/b" && ln -sf ../a/real-link fp-report-deploy )
+  "$d/b/fp-report-deploy" --help >/dev/null 2>&1; }
+t "…and through a relative, two-hop chain"   deploy_via_relative_chain
+# a project-local deploy link finds THAT project's conf from an unrelated cwd, as the
+# engine's own project link does; before, it fell through to whatever project the cwd held
+deploy_conf_beside_link(){ local p="$TMP/deployproj"; mkdir -p "$p/scripts" "$p/pub" "$TMP/elsewhere"
+  ( cd "$p/pub" && git init -q && git config user.email t@t && git config user.name t )
+  mkconf "$p/scripts/fp-report.conf" 'FP_PREFIX="DP"' 'APP_NAME="x"' "DEPLOY_REPO=\"$p/pub\"" 'DEPLOY_REMOTE=""'
+  ln -sf "$ROOT/fp-report-deploy.sh" "$p/scripts/fp-report-deploy"
+  # only the CONF CHOICE is under test: the deploy target it announces comes from that conf
+  # (the render after it needs live fp and may fail here; that is not what is asserted)
+  local out; out="$(cd "$TMP/elsewhere" && "$p/scripts/fp-report-deploy" --dry-run 2>&1)"
+  printf '%s' "$out" | grep -q "Generating report into $p/pub"; }
+t "a project's deploy link uses its own conf" deploy_conf_beside_link
 bad_threshold(){ mkconf "$TMP/badt.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'URGENT_IDLE_DAYS=thirty'
   local out; out="$("$ENGINE" -c "$TMP/badt.conf" --issues-file "$FIX" -o "$TMP/badt.html" --no-open 2>&1)" && return 1
   printf '%s' "$out" | grep -q "URGENT_IDLE_DAYS must be a whole number"; }

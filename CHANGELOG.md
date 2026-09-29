@@ -17,6 +17,14 @@ template, or tooling — not the issue data a given report happens to show.
   existing `~/bin/fp-report` symlinks keep working — only the install/export commands
   gain a `tools/` prefix.
 
+### Fixed
+- **`fp-report-deploy` works when installed as a symlink** (`tools/install.sh`, a bin
+  directory, a project's `scripts/`). It resolved only the link's directory, so it looked
+  for the engine beside the link and exited "engine not found". It now follows the symlink
+  chain like the engine does, and hands the engine the directory of every hop, so a
+  project-local deploy link run from anywhere uses THAT project's conf, not whichever
+  project the current directory happens to be in.
+
 ### Added
 - **Review children are not scope** (`REVIEW_TITLE_RE`, default `^code review\b`): a child
   that reviews its parent no longer makes the parent an epic, so a work item with one
