@@ -275,6 +275,8 @@ JSON
 RMS="$TMP/roadmap-nested.html"; render "$RMS" "$TMP/nested.json" "$TMP/cyc.conf"
 t "a sub-epic gets its own block"             rmap "$RMS" blocks 2
 t "…but containment lifts no dependency"      rmap "$RMS" edges 0
+# progress counts every descendant: P holds S, p1 and (through S) s1
+t "progress counts all descendants"           rmap "$RMS" html roadmap '>0/3</span>'
 
 # local only is a build switch: --publish (fp-report-deploy) ships none of the reorder code
 RMP="$TMP/roadmap-publish.html"

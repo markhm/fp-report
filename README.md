@@ -275,7 +275,8 @@ backlog is. `workstation` is read from issue properties, which are only fetched 
 
 The **Roadmap** tab lays out every open epic with sub-issues as a block in a **theme lane**,
 left to right in the order to take them. Each block shows its status, priority, rank and
-progress (done of total sub-issues); click one to see its issues grouped by status, and
+progress (done of all issues below it, sub-epics' issues included); click one to see its
+issues grouped by status, and
 which other epics it waits on or holds back. A dashed **Now** line sits after the last
 epic that has left the backlog status: a not-started epic to the left of it has been ordered
 ahead of work already under way, and is marked so.

@@ -164,8 +164,19 @@ function rmLabel(e, slot){
   return [`${slot+1}. ${e.title}`, (STATUS_META[e.status]||{label:e.status}).label,
           `${PRIO_META[prioKey(e.priority)].label} priority`, ...against].join(", ");
 }
+// Progress counts every descendant, not just direct children: an epic whose work sits in
+// sub-epics would otherwise read as "0/2" while dozens of issues below it are done.
+// `seen` guards a malformed parent loop.
+function rmDescendants(id, seen = new Set()){
+  const out = [];
+  for(const c of kids.get(id) || []){
+    if(seen.has(c.id)) continue;
+    seen.add(c.id); out.push(c, ...rmDescendants(c.id, seen));
+  }
+  return out;
+}
 function rmBlock(e, slot, lane, ahead){
-  const ch = kids.get(e.id) || [];
+  const ch = rmDescendants(e.id);
   const done = ch.filter(c=>DONE.has(c.status)).length;
   const sm = STATUS_META[e.status] || {label:e.status, color:"var(--muted)"};
   const pm = PRIO_META[prioKey(e.priority)];
@@ -181,7 +192,7 @@ function rmBlock(e, slot, lane, ahead){
       ${ahead?`<span class="rm-ahead" title="not started, yet ordered ahead of work already under way">ahead</span>`:""}
       ${r!=null?`<span class="rm-r" title="${esc(RANK_PROP)} ${r}">#${r}</span>`:""}</div>
     <div class="rm-p"><span class="cid">${IDP}${e.shortId}</span><span class="pbar"><i style="width:${ch.length?done/ch.length*100:0}%;background:var(--good)"></i></span>
-      <span class="rm-pn">${done}/${ch.length}</span></div>
+      <span class="rm-pn" title="${done} of ${ch.length} issues below this epic are done">${done}/${ch.length}</span></div>
   </div>`;
 }
 
