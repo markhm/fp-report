@@ -106,6 +106,11 @@ STATUS_FILE="fp-report.status.json"
 THEMES_FILE="fp-report.themes.json"
 THEME_FILE="$theme_name"
 OUTPUT_FILE="fp-report.html"
+# Roadmap tab: the fp property holding each epic's rank (register it as a text property in
+# .fp/extensions), and epic IDs to keep off the lanes. Unset = order by dependencies,
+# priority and status, with no reordering.
+# RANK_PROPERTY="rank"
+# ROADMAP_EXCLUDE=""
 EOF
     # convenience symlink → the PATH entry if present, else this engine
     local on_path; on_path="$(command -v fp-report || true)"

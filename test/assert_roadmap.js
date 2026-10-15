@@ -16,6 +16,11 @@
  *                                    re-run the order model: it must come back the same
  *     refuse   <sid> <index>         moving this epic to that slot breaks a dependency
  *     reorder  yes|no                the reorder view is built into this page
+ *     controls yes|no                the reorder controls were wired up (built in AND a rank to write)
+ *     now      <k>                   the Now line sits after the first k columns
+ *     key      <sid> <key>           press a key on a block: Enter/Space selects it
+ *     move     <sid> <±n> <sid,…|refused>  the keyboard move (Alt+←/→ = ±1) and the order after it
+ *     clean    <sid,sid,…>           the commands for this dragged order carry no character of any title
  *     unsafe   <key>                 the command writer refuses this key
  *     html     <node> <substring>    the rendered markup of a node contains this
  *
@@ -104,6 +109,31 @@ eval(app + `
   } else if (CHECK === "reorder") {
     const got = typeof rmDecorate === "function" && typeof rankPlan === "function";
     res(got === (A[0] === "yes"), "reorder built in: expected " + A[0] + ", got " + got);
+  } else if (CHECK === "controls") {
+    res((rmWired === true) === (A[0] === "yes"), "reorder controls wired: expected " + A[0] + ", got " + (rmWired === true));
+  } else if (CHECK === "now") {
+    const m = document.getElementById("roadmap").innerHTML.match(/class="rm-now" style="left:([\\d.-]+)px/);
+    const want = RM_GEO.label + Number(A[0]) * rmPitch - RM_GEO.gap / 2;
+    res(!!m && Number(m[1]) === want, "Now line: expected left " + want + "px (after " + A[0] + " columns), got " + (m && m[1]));
+  } else if (CHECK === "key") {
+    const h = document.getElementById("roadmap").__l.keydown, id = idOf(A[0]);
+    rmSel = null;
+    h({ key: A[1], preventDefault() {}, target: { closest: () => ({ dataset: { rid: id } }) } });
+    res(rmSel === id, "pressing " + JSON.stringify(A[1]) + " on " + A[0] + " should select it; selected: " + rmSel);
+  } else if (CHECK === "move") {
+    const id = idOf(A[0]), ok = rmMove(id, rmShown().indexOf(id) + Number(A[1]));
+    const got = ok ? sids(rmShown()) : "refused";
+    res(got === A[2], "move " + A[0] + " by " + A[1] + ": expected " + A[2] + ", got " + got);
+  } else if (CHECK === "clean") {
+    const target = A[0].split(",").map(idOf);
+    const text = rankCommands(rmPlanFor(target, target), GENERATED_AT);
+    const named = target.map(id => byId.get(id).title).filter(t => t && text.includes(t));
+    // every command line is exactly an fp update of an id to an integer: no room for anything else
+    const lines = text.split("\\n").slice(1);
+    const odd = lines.filter(l => !/^fp issue update [A-Za-z0-9_]+-[A-Za-z0-9]+ --property rank=\\d+$/.test(l));
+    const shell = ["\\x60", "$", ";", "(", "|"].filter(ch => lines.join("").includes(ch));
+    res(!named.length && !odd.length && !shell.length && lines.length > 0,
+        "commands leak tracker text: " + (named.join(" | ") || odd[0] || shell.join("") || "(no commands written)") + "\\n" + text);
   } else if (CHECK === "unsafe") {
     let threw = false;
     try { rankCommands([{ key: A[0], rank: 10 }], GENERATED_AT); } catch (e) { threw = true; }

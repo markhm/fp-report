@@ -155,6 +155,15 @@ function rmLanes(){
   return {laneOf, lanes: defs.filter(t=>used.has(t.key))};
 }
 
+// What a screen reader (and a focused keyboard user) gets for a block: its place, its state,
+// and any dependency that runs against the preferred order, which on screen is a red arrow.
+function rmLabel(e, slot){
+  const against = rmEdges.filter(x=>(x.a===e.id || x.b===e.id) && rmAgainst(x)).map(x=>
+    x.b===e.id ? `waits on ${IDP}${byId.get(x.a).shortId}, against its rank or priority`
+               : `holds back ${IDP}${byId.get(x.b).shortId}, which rank or priority puts first`);
+  return [`${slot+1}. ${e.title}`, (STATUS_META[e.status]||{label:e.status}).label,
+          `${PRIO_META[prioKey(e.priority)].label} priority`, ...against].join(", ");
+}
 function rmBlock(e, slot, lane, ahead){
   const ch = kids.get(e.id) || [];
   const done = ch.filter(c=>DONE.has(c.status)).length;
@@ -164,7 +173,8 @@ function rmBlock(e, slot, lane, ahead){
   const x = RM_GEO.label + slot*rmPitch, y = RM_GEO.head + lane*RM_GEO.lane + RM_GEO.pad;
   return `<div class="rm-block${isActive(e)?" active":""}${ahead?" ahead":""}${rmSel===e.id?" sel":""}${RM.cyclic.has(e.id)?" cyc":""}"
     data-rid="${e.id}" data-id="${IDP}${e.shortId}" style="left:${x}px;top:${y}px;width:${RM_GEO.col}px;height:${RM_GEO.block}px;--sc:${sm.color}"
-    title="${esc(e.title)}">
+    title="${esc(e.title)}" tabindex="0" role="button" aria-pressed="${rmSel===e.id}"
+    aria-label="${esc(rmLabel(e, slot))}">
     <div class="rm-t">${esc(e.title)}</div>
     <div class="rm-m"><span class="rm-s"><span class="dot" style="background:${sm.color}"></span>${esc(sm.label)}</span>
       <span style="color:${pm.color}" title="${pm.label} priority">${pm.icon}</span>
@@ -266,7 +276,12 @@ function renderRoadmapNote(){
     `${rmEdges.length} dependenc${rmEdges.length===1?"y":"ies"} between epics`
       + (against ? `, ${against} drawn red: rank or priority prefers the other order, and the dependency wins.` : "."),
   ];
-  if(cyc.length) parts.push(`Dependency cycle: ${ids(cyc)} wait on each other, so they cannot all be honoured. Break the cycle in fp.`);
+  // a cycle makes the order partly arbitrary, so it is announced above the lanes, not in the footnote
+  const alert = document.getElementById("rmAlert");
+  alert.hidden = !cyc.length;
+  alert.innerHTML = cyc.length
+    ? `<b>Dependency cycle:</b> ${ids(cyc)} wait on each other, so they cannot all be honoured; they are placed by rank and priority instead. Break the cycle in fp.`
+    : "";
   if(rmBad.length) parts.push(`Not a whole number in “${esc(RANK_PROP)}”, read as unranked: ${ids(rmBad)}.`);
   if(RM_EXCLUDE.size) parts.push(`Left off by ROADMAP_EXCLUDE: ${[...RM_EXCLUDE].map(s=>IDP+s).map(esc).join(", ")}.`);
   document.getElementById("rmNote").innerHTML = parts.map(p=>`<div>${p}</div>`).join("");
@@ -283,6 +298,20 @@ document.getElementById("roadmap").addEventListener("click", ev=>{
   rmSel = rmSel === b.dataset.rid ? null : b.dataset.rid;
   renderRoadmap();
 });
+// Enter or Space on a focused block selects it, as a click does; focus stays on that block
+document.getElementById("roadmap").addEventListener("keydown", ev=>{
+  if(ev.key !== "Enter" && ev.key !== " ") return;
+  const b = ev.target.closest(".rm-block"); if(!b) return;
+  ev.preventDefault();
+  const id = b.dataset.rid;
+  rmSel = rmSel === id ? null : id;
+  renderRoadmap();
+  rmFocus(id);
+});
+function rmFocus(id){
+  const b = document.getElementById("roadmap").querySelector(`.rm-block[data-rid="${id}"]`);
+  if(b) b.focus();
+}
 document.getElementById("rmDetail").addEventListener("click", ev=>{
   if(!ev.target.closest("[data-rmclose]")) return;
   rmSel = null; renderRoadmap();

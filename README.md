@@ -302,8 +302,12 @@ then report blocks that are not real.
 status would put the dependent epic first: the preference and a hard dependency disagree,
 and the dependency wins. With no ranks at all this still shows the common case of a
 high-priority epic waiting on an unstarted one. A dependency **cycle** cannot be honoured.
-Its epics are outlined, its arrows dashed, and the note under the board names them. A rank
-that is not a whole number is read as unranked and named in the note too.
+Its epics are outlined, its arrows dashed, and a notice above the lanes names them. A rank
+that is not a whole number is read as unranked and named in the note under the board.
+
+Every block is keyboard reachable: Tab to it, and Enter or Space opens it. Its accessible
+label gives its place, status and priority, plus any dependency that runs against rank or
+priority, which on screen is a red arrow.
 
 ### Setting it up
 
@@ -320,7 +324,8 @@ and reordering is off.
 
 ### Reordering (local builds only)
 
-In a report generated locally (plain `fp-report`), blocks can be **dragged** left or right.
+In a report generated locally (plain `fp-report`), blocks can be **dragged** left or right,
+or moved one place at a time with **Alt+← / Alt+→** on a focused block.
 The page writes nothing to fp. It shows a block of commands to copy:
 
 ```sh

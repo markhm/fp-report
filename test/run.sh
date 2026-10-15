@@ -192,7 +192,8 @@ t "…and the exclusion is named in the note"   rmap "$RMH" html rmNote "Left of
 t "lanes are the Themes tab's themes"        rmap "$RMH" lanes "security,reliability,maintainability"
 t "…resolved the way the Themes tab does"    rmap "$RMH" lane tie0002a security
 # c21 (in alt00001) waits on c11 (in edge0001): lifted to the two epics. c41 waits on DONE
-# work, which holds nothing back, so it lifts nothing
+# work, which holds nothing back, and c42 is itself done, so neither lifts anything (either
+# would put tie0002b ahead of tie0001a)
 t "a child dependency is lifted to the epics" rmap "$RMH" edges 1
 t "…and drawn red: rank says the other order" rmap "$RMH" edge edge0001 alt00001 against
 t "…which the note counts"                   rmap "$RMH" html rmNote "1 drawn red"
@@ -200,6 +201,14 @@ t "a rank that is not a number is reported"  rmap "$RMH" html rmNote "read as un
 t "blocks carry their rank"                  rmap "$RMH" html roadmap '>#10<'
 t "not-started epics left of Now are marked" rmap "$RMH" ahead "edge0001,tie0001a"
 t "the Now line is drawn"                    rmap "$RMH" html roadmap 'class="rm-now"'
+# the last active epic is tie0002a, fifth in the order, so the line follows column 5
+t "…after the last active epic"             rmap "$RMH" now 5
+# keyboard: every block is reachable, says what it is, and Enter/Space selects it
+t "blocks are focusable buttons"             rmap "$RMH" html roadmap 'tabindex="0" role="button"'
+t "…labelled with place, status, priority"   rmap "$RMH" html roadmap 'aria-label="2. Edge protection, Backlog, High priority'
+t "…and a red arrow's reason, for focus"     rmap "$RMH" html roadmap 'holds back FP-alt00001, which rank or priority puts first'
+t "Enter on a block selects it"              rmap "$RMH" key alt00001 Enter
+t "…so does Space"                           rmap "$RMH" key edge0001 " "
 t "a block unfolds into its issues"          rmap "$RMH" select alt00001 'FP-qsxp0001'
 t "…grouped by status"                       rmap "$RMH" select alt00001 '<div class="rm-dl is-done">Done · 1</div>'
 t "…the open ones under their own heading"   rmap "$RMH" select alt00001 '<div class="rm-dl">Backlog · 1</div>'
@@ -217,13 +226,20 @@ t "…including a title-like key"              rmap "$RMH" unsafe 'Edge protecti
 t "a dragged order survives the regenerate"  rmap "$RMH" replay "tie0002b,prog0001,edge0001,alt00001,tie0001a,tie0002a,tie0001b,badr0001" tie0002b
 t "…also when an unranked epic jumps a tie"  rmap "$RMH" replay "prog0001,edge0001,alt00001,badr0001,tie0001a,tie0002a,tie0001b,tie0002b" badr0001
 t "a drop before a dependency is refused"    rmap "$RMH" refuse alt00001 0
+t "Alt+→ moves a block one place later"      rmap "$RMH" move tie0001b 1 "prog0001,edge0001,alt00001,tie0001a,tie0002a,tie0002b,tie0001b,badr0001"
+t "Alt+← moves it one place earlier"         rmap "$RMH" move tie0001a -1 "prog0001,edge0001,tie0001a,alt00001,tie0002a,tie0001b,tie0002b,badr0001"
+t "…but never before its dependency"         rmap "$RMH" move alt00001 -1 refused
+# a title full of shell syntax (tie0002b) must not reach the commands in any form
+t "commands carry no title text"             rmap "$RMH" clean "tie0002b,prog0001,edge0001,alt00001,tie0001a,tie0002a,tie0001b,badr0001"
 t "the local build has the reorder view"     rmap "$RMH" reorder yes
+t "…and wires its controls"                  rmap "$RMH" controls yes
 # without a rank property: still a roadmap, in dependency, priority and status order
 RMN="$TMP/roadmap-norank.html"; render "$RMN" "$RMF" "$TMP/base.conf"
 # (no ROADMAP_EXCLUDE here either, so the "Bugs" bucket takes its place among the mediums)
 t "no RANK_PROPERTY still renders"           rmap "$RMN" order "edge0001,alt00001,tie0001a,prog0001,tie0002a,bugs0001,tie0001b,tie0002b,badr0001"
 t "…red where priority disagrees"            rmap "$RMN" edge edge0001 alt00001 against
 t "…says reordering is off"                  rmap "$RMN" html rmNote "No RANK_PROPERTY is configured"
+t "…and wires no reorder controls"           rmap "$RMN" controls no
 t "…and without the exclusion the bucket is back" rmap "$RMN" html roadmap "FP-bugs0001"
 # a cycle is reported, never looped on
 cat > "$TMP/cycle.json" <<'JSON'
@@ -240,10 +256,26 @@ RMY="$TMP/roadmap-cycle.html"; mkconf "$TMP/cyc.conf" 'FP_PREFIX="FP"' 'APP_NAME
 render "$RMY" "$TMP/cycle.json" "$TMP/cyc.conf"
 t "a dependency cycle still renders"         rmap "$RMY" order "cyca0001,cycb0001,cycc0001"
 t "…one block per epic"                      rmap "$RMY" blocks 3
+t "the Now line starts the board when nothing is active" rmap "$RMY" now 0
 t "…the cycle is named"                      rmap "$RMY" cyclic "cyca0001,cycb0001"
-t "…in the note"                             rmap "$RMY" html rmNote "Dependency cycle: FP-cyca0001, FP-cycb0001"
+t "…in a notice above the lanes"             rmap "$RMY" html rmAlert "Dependency cycle:</b> FP-cyca0001, FP-cycb0001"
+t "…which a backlog without one leaves empty" bash -c '! node "'"$ROOT"'/test/assert_roadmap.js" "'"$RMH"'" html rmAlert "cycle"'
 t "…its arrows are drawn as a cycle"         rmap "$RMY" edge cyca0001 cycb0001 cyc
 t "…and an epic behind it keeps its arrow"   rmap "$RMY" edge cyca0001 cycc0001 plain
+# a sub-epic is an epic too, but a dependency between it and its own parent is containment,
+# not order: p1 (in P) waiting on s1 (in sub-epic S) must not draw S → P
+cat > "$TMP/nested.json" <<'JSON'
+{"issues":[
+ {"id":"p","shortId":"nest000p","title":"Parent epic","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"s","shortId":"nest000s","title":"Sub-epic","description":"","status":"todo","priority":"high","parent":"p","dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"s1","shortId":"nest00s1","title":"Sub work","description":"","status":"todo","priority":"high","parent":"s","dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"p1","shortId":"nest00p1","title":"Parent work","description":"","status":"todo","priority":"high","parent":"p","dependencies":["s1"],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"}
+]}
+JSON
+RMS="$TMP/roadmap-nested.html"; render "$RMS" "$TMP/nested.json" "$TMP/cyc.conf"
+t "a sub-epic gets its own block"             rmap "$RMS" blocks 2
+t "…but containment lifts no dependency"      rmap "$RMS" edges 0
+
 # local only is a build switch: --publish (fp-report-deploy) ships none of the reorder code
 RMP="$TMP/roadmap-publish.html"
 "$ENGINE" -c "$RMC" --issues-file "$RMF" -o "$RMP" --no-open --publish >/dev/null 2>&1
@@ -564,6 +596,7 @@ IDIR="$TMP/proj"; mkdir -p "$IDIR/.fp"; printf 'prefix = "DEMO"\n' > "$IDIR/.fp/
 t "--init creates scripts/fp-report.conf"  test -f "$IDIR/scripts/fp-report.conf"
 t "--init detects prefix from .fp"         grep -q 'FP_PREFIX="DEMO"' "$IDIR/scripts/fp-report.conf"
 t "--init copies chosen theme"             test -f "$IDIR/scripts/fp-report-graphite.css"
+t "--init scaffolds the roadmap keys, commented" bash -c 'grep -q "^# RANK_PROPERTY=\"rank\"" "'"$IDIR"'/scripts/fp-report.conf" && grep -q "^# ROADMAP_EXCLUDE=" "'"$IDIR"'/scripts/fp-report.conf"'
 t "--init copies the theme taxonomy"       test -f "$IDIR/scripts/fp-report.themes.json"
 t "--init conf points at the taxonomy"     grep -q 'THEMES_FILE="fp-report.themes.json"' "$IDIR/scripts/fp-report.conf"
 t "--init makes the symlink"               test -L "$IDIR/scripts/fp-report"

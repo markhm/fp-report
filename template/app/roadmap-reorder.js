@@ -126,20 +126,18 @@ function rmDecorate(){
   board.addEventListener("drop", ev=>{
     if(!rmDrag) return;
     ev.preventDefault();
-    const cur = rmShown().slice(), from = cur.indexOf(rmDrag), gap = gapAt(ev);
-    const to = gap > from ? gap-1 : gap;
+    const from = rmShown().indexOf(rmDrag), gap = gapAt(ev);
     const moved = rmDrag; rmDrag = null;
-    if(to === from){ renderRoadmap(); return; }
-    cur.splice(from, 1); cur.splice(to, 0, moved);
-    const clash = rmBlocks(cur);
-    if(clash){
-      toast(`${IDP}${byId.get(clash.b).shortId} waits on ${IDP}${byId.get(clash.a).shortId}, so it can't go first`);
-      renderRoadmap(); return;
-    }
-    rmMoved.add(moved);
-    rmView = cur.join() === RM.order.join() ? null : cur;
-    if(!rmView) rmMoved.clear();
-    renderRoadmap();
+    rmMove(moved, gap > from ? gap-1 : gap);
+  });
+  // the keyboard equivalent: Alt+← / Alt+→ on a focused block moves it one place
+  document.addEventListener("keydown", ev=>{
+    if(!ev.altKey || (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight")) return;
+    const b = ev.target.closest && ev.target.closest(".rm-block"); if(!b) return;
+    ev.preventDefault();
+    const id = b.dataset.rid;
+    rmMove(id, rmShown().indexOf(id) + (ev.key === "ArrowLeft" ? -1 : 1));
+    rmFocus(id);
   });
   document.addEventListener("click", ev=>{
     if(ev.target.closest("[data-rmreset]")){ rmView = null; rmMoved.clear(); renderRoadmap(); return; }
@@ -150,10 +148,30 @@ function rmDecorate(){
   });
 }
 
+// Move one epic to index `to` of the shown order. Refused, with the reason, when it would put
+// the epic before one it depends on (or one that depends on it after). Returns whether it moved.
+function rmMove(id, to){
+  const cur = rmShown().slice(), from = cur.indexOf(id);
+  to = Math.max(0, Math.min(cur.length-1, to));
+  if(from < 0 || to === from){ renderRoadmap(); return false; }
+  cur.splice(from, 1); cur.splice(to, 0, id);
+  const clash = rmBlocks(cur);
+  if(clash){
+    toast(`${IDP}${byId.get(clash.b).shortId} waits on ${IDP}${byId.get(clash.a).shortId}, so it can't go first`);
+    renderRoadmap(); return false;
+  }
+  rmMoved.add(id);
+  rmView = cur.join() === RM.order.join() ? null : cur;
+  if(!rmView) rmMoved.clear();
+  renderRoadmap();
+  return true;
+}
+
 function rmRenderCmds(){
   const box = document.getElementById("rmCmds");
   if(!rmView){
-    box.innerHTML = `<div class="rm-ch"><b>Reorder</b> <span class="sub">drag a block left or right to change the order.
+    box.innerHTML = `<div class="rm-ch"><b>Reorder</b> <span class="sub">drag a block left or right to change the order
+      (or focus it and press Alt+← / Alt+→).
       The page changes nothing in fp: it writes the commands to run in the project, and the regenerated report shows the new order.</span></div>`;
     return;
   }
