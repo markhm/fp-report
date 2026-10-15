@@ -13,6 +13,7 @@
 #   fp-report --refresh-labels # ignore the label cache and re-fetch every issue
 #   fp-report --no-history     # skip the 'fp log' replay (drops Trends + Flow)
 #   fp-report --history-file L # replay this saved 'fp log' output (offline/CI)
+#   fp-report --publish        # build for publishing: no local-only code (Roadmap reorder)
 #
 # The engine + HTML template live once (this folder). Each project supplies its own
 # fp-report.conf + fp-report.status.json + logos. The config is located, in order:
@@ -119,7 +120,7 @@ EOF
 main() {
     # ---- args ----
     DO_OPEN=true; CONF_ARG=""; OUT_OVERRIDE=""; ISSUES_FILE=""; INIT=false; THEME_ARG=""
-    LABELS_ARG=""; REFRESH_LABELS=false; HISTORY_ARG=""; HISTORY_FILE=""
+    LABELS_ARG=""; REFRESH_LABELS=false; HISTORY_ARG=""; HISTORY_FILE=""; BUILD_MODE="local"
     while [ $# -gt 0 ]; do
         case "$1" in
             --no-open)     DO_OPEN=false ;;
@@ -132,10 +133,11 @@ main() {
             --no-history)  HISTORY_ARG=false ;;     # skip the 'fp log' replay
             --history)     HISTORY_ARG=true ;;
             --history-file) shift; HISTORY_FILE="$1" ;; # replay saved 'fp log' text (offline/CI)
+            --publish)     BUILD_MODE="publish" ;;  # leave out local-only parts (fp-report-deploy)
             -c|--config)   shift; CONF_ARG="$1" ;;
             -o|--out)      shift; OUT_OVERRIDE="$1" ;;
             --issues-file) shift; ISSUES_FILE="$1" ;;   # render this JSON instead of calling fp (offline/CI)
-            -h|--help)     sed -n '2,24p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            -h|--help)     sed -n '2,25p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
             *) echo "Unknown arg: $1" >&2; exit 2 ;;
         esac
         shift
@@ -179,6 +181,10 @@ main() {
     # Children whose title matches this (case-insensitive) are reviews OF their parent, not
     # scope: they do not make the parent an epic, and a finished review does not finish it.
     REVIEW_TITLE_RE='^code review\b'
+    # Roadmap tab. RANK_PROPERTY names the fp property holding each epic's rank; empty →
+    # order by dependencies, priority and status alone, and no reordering.
+    RANK_PROPERTY=""
+    ROADMAP_EXCLUDE=""                             # epic IDs kept off the lanes (catch-all parents)
     # shellcheck source=/dev/null
     . "$CONF"
     [ -n "$APP_NAME" ] || APP_NAME="$PROJECT_NAME"   # default the app name to the project name
@@ -290,7 +296,7 @@ PY
     # "low-signal" can't silently drop status changes; the parser ignores what it doesn't need.
     [ -z "$HISTORY_ARG" ] || FETCH_HISTORY="$HISTORY_ARG"
     # Normalise REPORTS_INCLUDED to a lowercase, space-delimited list. Unset = every tab.
-    ALL_REPORTS="focus signals themes epics issues orphans trends flow"
+    ALL_REPORTS="focus signals themes roadmap epics issues orphans trends flow"
     if [ -n "$REPORTS_INCLUDED" ]; then
         REPORTS="$(printf '%s' "$REPORTS_INCLUDED" | tr 'A-Z,' 'a-z ' | tr -s ' ')"
         for r in $REPORTS; do
@@ -376,7 +382,8 @@ PY
     LOGO_LIGHT="$LOGO_LIGHT_PATH" LOGO_DARK="$LOGO_DARK_PATH" STATUS_PATH="$STATUS_PATH" \
     THEMES_PATH="$THEMES_PATH" THEME_PATH="$THEME_PATH" HIST_PATH="$TMP_HIST" \
     REPORTS="$REPORTS" CRITICAL_BUDGET="$CRITICAL_BUDGET" URGENT_IDLE_DAYS="$URGENT_IDLE_DAYS" \
-    CLAIM_IDLE_DAYS="$CLAIM_IDLE_DAYS" REVIEW_TITLE_RE="$REVIEW_TITLE_RE" python3 - <<'PY'
+    CLAIM_IDLE_DAYS="$CLAIM_IDLE_DAYS" REVIEW_TITLE_RE="$REVIEW_TITLE_RE" BUILD_MODE="$BUILD_MODE" \
+    RANK_PROPERTY="$RANK_PROPERTY" ROADMAP_EXCLUDE="$ROADMAP_EXCLUDE" python3 - <<'PY'
 import os, re, base64, mimetypes, json
 def datauri(path):
     mime = mimetypes.guess_type(path)[0] or "image/png"
@@ -385,21 +392,26 @@ def datauri(path):
 
 # The template is authored as a directory of small files (styles/*.css, app/*.js) and
 # assembled here into the single self-contained page. `<!--#include path -->` inlines a
-# file relative to the template's own dir. The app parts are concatenated into ONE
+# file relative to the template's own dir; `<!--#include-local path -->` does the same in a
+# local build and inlines NOTHING under --publish, so local-only code (the Roadmap reorder)
+# is absent from a published page rather than shipped and hidden. The app parts are concatenated into ONE
 # <script>, deliberately: they share a top-level scope and rely on hoisting across
 # sections, so separate <script> tags would change behaviour.
-INCLUDE = re.compile(r'^[ \t]*<!--#include\s+(\S+)\s*-->[ \t]*$', re.M)
+INCLUDE = re.compile(r'^[ \t]*<!--#include(-local)?\s+(\S+)\s*-->[ \t]*$', re.M)
+PUBLISH = os.environ.get("BUILD_MODE") == "publish"
 def assemble(path, depth=0, seen=None):
     if depth > 8:
         raise SystemExit(f"fp-report: include nesting too deep at {path}")
     seen = seen or []
     base = os.path.dirname(os.path.abspath(path))
     def sub(m):
-        inc = os.path.join(base, m.group(1))
+        if m.group(1) and PUBLISH:
+            return ""
+        inc = os.path.join(base, m.group(2))
         if inc in seen:
             raise SystemExit("fp-report: circular include: " + " -> ".join(seen + [inc]))
         if not os.path.isfile(inc):
-            raise SystemExit(f"fp-report: missing include {m.group(1)} (from {path})")
+            raise SystemExit(f"fp-report: missing include {m.group(2)} (from {path})")
         body = assemble(inc, depth + 1, seen + [inc])
         return body[:-1] if body.endswith("\n") else body
     return INCLUDE.sub(sub, open(path, encoding="utf-8").read())
@@ -466,6 +478,17 @@ signals = json.dumps({"criticalBudget": whole("CRITICAL_BUDGET"),
                       "urgentIdleDays": whole("URGENT_IDLE_DAYS"),
                       "claimIdleDays":  whole("CLAIM_IDLE_DAYS"),
                       "reviewTitleRe":  review_re()}, separators=(",", ":"))
+# Roadmap settings. The rank property name ends up inside the shell commands the reorder
+# view writes, so it is held to a plain identifier here rather than escaped there.
+rank_prop = os.environ.get("RANK_PROPERTY", "").strip()
+if rank_prop and not re.fullmatch(r"[a-z][a-z0-9_-]*", rank_prop):
+    raise SystemExit(f"fp-report: RANK_PROPERTY must be a property key like 'rank', got {rank_prop!r}")
+# ROADMAP_EXCLUDE takes IDs with or without the prefix; the page matches on the short id
+pfx = os.environ["FP_PREFIX"] + "-"
+exclude = [t[len(pfx):] if t.startswith(pfx) else t
+           for t in re.split(r"[\s,]+", os.environ.get("ROADMAP_EXCLUDE", "")) if t]
+roadmap = json.dumps({"rankProperty": rank_prop, "exclude": exclude},
+                     separators=(",", ":")).replace("<", "\\u003c")
 theme = open(os.environ["THEME_PATH"], encoding="utf-8").read().rstrip("\n")   # raw CSS custom properties
 html = (tpl.replace("__FP_DATA__", data)
            .replace("__STATUS_CONFIG__", status)
@@ -473,6 +496,7 @@ html = (tpl.replace("__FP_DATA__", data)
            .replace("__FP_HISTORY__", history)
            .replace("__REPORTS_INCLUDED__", reports)
            .replace("__SIGNAL_CONFIG__", signals)
+           .replace("__ROADMAP_CONFIG__", roadmap)
            .replace("__THEME_CSS__", theme)
            .replace("__GENERATED_AT__", os.environ["GENERATED_AT"])
            .replace("__ID_PREFIX__", os.environ["FP_PREFIX"])

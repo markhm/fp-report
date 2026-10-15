@@ -68,6 +68,8 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `URGENT_IDLE_DAYS` | days a critical/high issue may sit untouched before it is flagged (default `30`) |
 | `CLAIM_IDLE_DAYS` | days an in-progress issue may sit untouched before its claim is flagged stale (default `7`) |
 | `REVIEW_TITLE_RE` | children whose title matches (case-insensitive) are reviews of their parent, not scope (default `^code review\b`; empty = off) |
+| `RANK_PROPERTY` | fp property holding each epic's rank, for the Roadmap tab (default empty: no rank, no reordering) |
+| `ROADMAP_EXCLUDE` | epic IDs kept off the Roadmap lanes, e.g. a catch-all "Bugs" parent (default empty) |
 | `THEME_FILE` | colour theme (see below) |
 | `LOGO_LIGHT` / `LOGO_DARK` | brand wordmarks (light / dark theme); omit → neutral default |
 | `OUTPUT_DIR` / `OUTPUT_FILE` | where the HTML lands (default `../reports/fp-report.html`) |
@@ -269,6 +271,75 @@ threshold that quietly fell back to its default would make a signal look calmer 
 backlog is. `workstation` is read from issue properties, which are only fetched with labels
 (`FETCH_LABELS=true`); without it the claim is simply not shown.
 
+## Roadmap — which epic next, and after that
+
+The **Roadmap** tab lays out every open epic with sub-issues as a block in a **theme lane**,
+left to right in the order to take them. Each block shows its status, priority, rank and
+progress (done of total sub-issues); click one to see its issues grouped by status, and
+which other epics it waits on or holds back. A dashed **Now** line sits after the last
+epic that has left the backlog status: a not-started epic to the left of it has been ordered
+ahead of work already under way, and is marked so.
+
+**The order**, in precedence:
+
+1. **Hard dependencies.** Epic-to-epic dependencies, plus child dependencies that cross into
+   another epic, lifted to the two epics. A child counts toward its nearest epic on the
+   roadmap. Only *unmet* dependencies of *open* issues count, because finished work holds
+   nothing back. A dependency means "cannot start before".
+2. **Rank** (`RANK_PROPERTY`), ascending. Ranked epics come before unranked ones. Rank means
+   "we prefer".
+3. **Priority.**
+4. **Status**: furthest along first, i.e. the open statuses in reverse registry order
+   (in-progress, then selected, then todo with the default registry).
+
+Rank is **one global sequence**, not one per lane, so a block's column is its place in the
+whole order and "what's next" reads down one column. Lanes only group: an epic's lane is
+its theme, resolved exactly as on the Themes tab, and the facet picker switches between
+facets. Order is never encoded as dependencies, because the Focus and Signals tabs would
+then report blocks that are not real.
+
+**Arrows are the lifted dependencies.** An arrow is **red** where rank, then priority, then
+status would put the dependent epic first: the preference and a hard dependency disagree,
+and the dependency wins. With no ranks at all this still shows the common case of a
+high-priority epic waiting on an unstarted one. A dependency **cycle** cannot be honoured.
+Its epics are outlined, its arrows dashed, and the note under the board names them. A rank
+that is not a whole number is read as unranked and named in the note too.
+
+### Setting it up
+
+fp has no rank field, so register one as a **text** property in the project's fp extensions
+(`fp.ui.properties.text()`, under a key such as `rank`) and name that key in the conf:
+
+```sh
+RANK_PROPERTY="rank"
+ROADMAP_EXCLUDE="MC-abcdefgh"      # optional: catch-all parents to keep off the lanes
+```
+
+Without `RANK_PROPERTY` the tab still renders, ordered by dependencies, priority and status,
+and reordering is off.
+
+### Reordering (local builds only)
+
+In a report generated locally (plain `fp-report`), blocks can be **dragged** left or right.
+The page writes nothing to fp. It shows a block of commands to copy:
+
+```sh
+# fp-report roadmap order, from the snapshot of 2026-10-15T12:00:00Z
+fp issue update MC-abcdefgh --property rank=15
+```
+
+Run them in the project and regenerate the report to see the new order. The commands carry
+**IDs and integers only**, never a title or other issue text, so nothing from the tracker
+is ever read by the shell. Ranks are spaced integers (10, 20, 30, ...). A move rewrites only
+the dragged epic where a gap allows, and otherwise renumbers the fewest neighbours. The
+first drag in a project with no ranks yet ranks every epic ahead of the dragged one, because
+unranked epics sort after ranked ones. A drop that would put an epic before one it depends
+on is refused, since the dependency would win on the next regenerate.
+
+**Local only is a build switch, not hiding.** `fp-report --publish`, which
+`fp-report-deploy` always uses, leaves the reorder code out of the page entirely. A
+published report has no drag handles and no command generator.
+
 ## Epics — sorting the roadmap
 
 The **Epics** tab lists every epic with open children, plus still-open issues titled
@@ -452,7 +523,7 @@ pairs actually touch:
 REPORTS_INCLUDED="Themes Epics Issues"        # space- or comma-separated, case-insensitive
 ```
 
-Unset (the default) builds all eight: `Focus Signals Themes Epics Issues Orphans Trends Flow`. An
+Unset (the default) builds all nine: `Focus Signals Themes Roadmap Epics Issues Orphans Trends Flow`. An
 unknown name is reported on stderr and ignored rather than failing the run. Excluded tabs
 are hidden and the first surviving tab becomes the landing page, so the report never opens
 on a blank panel.
@@ -476,7 +547,8 @@ committing that file into a repo a static host watches. `fp-report-deploy.sh` do
 whole loop in one command:
 
 1. locates the same `fp-report.conf` the engine uses (identical precedence),
-2. regenerates the report **directly into** `DEPLOY_REPO/DEPLOY_SUBDIR/$OUTPUT_FILE`,
+2. regenerates the report **directly into** `DEPLOY_REPO/DEPLOY_SUBDIR/$OUTPUT_FILE`, with
+   `--publish`, so local-only parts such as the Roadmap reorder view are not in it,
 3. `git add -A` + commit in that repo (exits quietly if nothing changed),
 4. pushes `DEPLOY_BRANCH` to `origin` — and the host redeploys on the push.
 
@@ -527,7 +599,8 @@ fp-report-deploy.sh     publish the rendered report to a static-site repo
 template/               the report, authored as parts and assembled at render time
   fp-report.template.html   the shell: page markup + include directives
   styles/*.css              base · tiles · components · chart · mobile
-  app/*.js                  model · kpis · epics · orphans · table · themes · deps · trends · flow · ui
+  app/*.js                  model · kpis · epics · orphans · table · focus · signals · themes · roadmap
+                            · roadmap-reorder (local only) · deps · trends · flow · ui
 defaults/               reference config, status registry, theme taxonomy, themes, logos
 tools/                  install.sh, export.sh
 test/                   run.sh + fixtures + assertion helpers
@@ -560,6 +633,11 @@ worth knowing:
   share a top-level scope and rely on hoisting across sections, so separate `<script>`
   tags would change behaviour. Order matters: `model.js` first, then anything that
   consumes it.
+
+`<!--#include-local path -->` works the same in a local build and inlines **nothing** under
+`--publish`. It is how the Roadmap reorder view stays out of a published page. Code in the
+always-included parts may only reach a local-only part through a guarded call such as
+`typeof rmDecorate === "function"`.
 
 Adding a section is: drop a file in `styles/` or `app/`, add one include line in the
 shell. No build step, no bundler, no dependencies.

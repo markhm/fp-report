@@ -88,7 +88,7 @@ DEST="$DEST_DIR/$OUTPUT_FILE"
 # ---- 1. generate the report straight into the served directory ----
 mkdir -p "$DEST_DIR"
 echo "→ Generating report into $DEST"
-"$ENGINE" -c "$CONF" -o "$DEST" --no-open
+"$ENGINE" -c "$CONF" -o "$DEST" --no-open --publish   # no local-only code on a public page
 
 # ---- 2. bootstrap the publishing repo on first run ----
 if [ ! -e "$DEPLOY_REPO/.git" ]; then

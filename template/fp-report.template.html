@@ -12,6 +12,8 @@ __THEME_CSS__
 <!--#include styles/tiles.css -->
 <!--#include styles/components.css -->
 <!--#include styles/chart.css -->
+<!--#include styles/roadmap.css -->
+<!--#include-local styles/roadmap-reorder.css -->
 <!--#include styles/mobile.css -->
 </style>
 </head>
@@ -55,6 +57,7 @@ __THEME_CSS__
     <button class="tab active" data-panel="panel-focus" type="button">Focus <span class="n" id="tabFocusN"></span></button>
     <button class="tab" data-panel="panel-signals" type="button">Signals <span class="n" id="tabSignalsN"></span></button>
     <button class="tab" data-panel="panel-themes" type="button">Themes <span class="n" id="tabThemesN"></span></button>
+    <button class="tab" data-panel="panel-roadmap" type="button">Roadmap <span class="n" id="tabRoadmapN"></span></button>
     <button class="tab" data-panel="panel-epics" type="button">Epics <span class="n" id="tabEpicsN"></span></button>
     <button class="tab" data-panel="panel-issues" type="button">Issues <span class="n" id="tabIssuesN"></span></button>
     <button class="tab" data-panel="panel-orphans" type="button">Orphans <span class="n" id="tabOrphansN"></span></button>
@@ -79,6 +82,14 @@ __THEME_CSS__
     <div class="facets" id="facetPicker"></div>
     <section class="tiles" id="tiles"></section>
     <div class="tile-src" id="themeProvenance" style="margin-top:10px"></div>
+  </div>
+
+  <div class="panel" id="panel-roadmap" hidden>
+    <h2>Roadmap <span class="sub" style="text-transform:none;letter-spacing:0">— open epics in theme lanes, left to right in the order to take them: hard dependencies first, then rank, priority and status · arrows are dependencies, red where rank or priority would have it the other way · click a block for its issues</span></h2>
+    <div class="facets" id="rmFacets"></div>
+    <section class="card rm-card"><div class="rm-scroll" id="rmScroll"><div class="rm-board" id="roadmap"></div></div></section>
+    <section class="card rm-detail" id="rmDetail" hidden></section>
+    <div class="tile-src" id="rmNote" style="margin-top:10px"></div>
   </div>
 
   <div class="panel" id="panel-epics" hidden>
@@ -158,6 +169,8 @@ __THEME_CSS__
 <!--#include app/focus.js -->
 <!--#include app/signals.js -->
 <!--#include app/themes.js -->
+<!--#include app/roadmap.js -->
+<!--#include-local app/roadmap-reorder.js -->
 <!--#include app/deps.js -->
 <!--#include app/trends.js -->
 <!--#include app/flow.js -->

@@ -37,6 +37,18 @@ template, or tooling — not the issue data a given report happens to show.
 - **"Epic status behind" needs a child in motion**, not merely a done one: a partly done
   epic with nothing moving is paused, and Backlog is the truthful status for it. On the
   same backlog this removed all 13 flags, none of which had a child in progress.
+- **Roadmap tab**: open epics as blocks in theme lanes, left to right in the order to take
+  them: hard dependencies (epic-to-epic, plus child dependencies lifted to their epics),
+  then a configurable rank (`RANK_PROPERTY`), then priority, then status. Blocks show
+  status, priority, rank and progress, and click open to their issues grouped by status. A
+  Now line follows the last active epic. Dependency arrows turn red where rank or priority
+  would have it the other way, and cycles are named rather than looped on. `ROADMAP_EXCLUDE`
+  keeps catch-all parents off the lanes.
+- **Roadmap reordering, local builds only**: drag a block, copy the `fp issue update …
+  --property rank=N` commands it writes (IDs and integers only, fewest epics touched), run
+  them, regenerate. New engine flag `--publish` and template directive
+  `<!--#include-local -->` leave that code out of the page entirely. `fp-report-deploy`
+  always builds with `--publish`.
 - **Focus tab, now the landing tab**: every open critical and high work item in one ranked
   list (priority, then blocks-other-work, then unblocked before blocked, then longest idle),
   each row with its epic, age, blockers and `workstation` claim. Epics are excluded: their

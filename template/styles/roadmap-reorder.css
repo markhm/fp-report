@@ -1,0 +1,9 @@
+  /* ---- roadmap reorder (local builds only: absent from a --publish build) ---- */
+  .rm-board.can-drag .rm-block{cursor:grab}
+  .rm-block.dragging{opacity:.45}
+  .rm-drop{position:absolute;top:0;border-left:3px solid var(--link);z-index:3;pointer-events:none}
+  .rm-cmds{margin-top:12px}
+  .rm-ch{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px}
+  .rm-ch .sub{color:var(--muted);font-size:12px;flex:1 1 300px}
+  .rm-pre{margin:0;padding:10px 14px 14px;font-size:12px;overflow-x:auto;border-top:1px solid var(--border);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}

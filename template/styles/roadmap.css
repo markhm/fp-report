@@ -1,0 +1,50 @@
+  /* ---- roadmap ---- */
+  /* The board is laid out on fixed geometry (RM_GEO in roadmap.js): every block, arrow and
+     the Now line is positioned absolutely from its (column, lane), so nothing here may give
+     a block a size of its own. The board scrolls sideways inside its card, never the page. */
+  .rm-card{padding:0;overflow:hidden;min-width:0}
+  .rm-scroll{overflow-x:auto;overflow-y:hidden;max-width:100%}
+  .rm-board{position:relative;min-height:60px}
+  .rm-lane{position:absolute;left:0;border-top:1px solid var(--border)}
+  .rm-lane:first-of-type{border-top:0}
+  .rm-ll{position:sticky;left:0;display:inline-block;max-width:120px;padding:8px 10px 8px 12px;font-size:11.5px;
+    font-weight:600;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--tc);z-index:2;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rm-col{position:absolute;top:6px;text-align:center;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .rm-now{position:absolute;top:0;border-left:2px dashed var(--link);z-index:1;pointer-events:none}
+  .rm-now span{position:absolute;top:4px;left:5px;font-size:10.5px;font-weight:700;color:var(--link);white-space:nowrap;
+    text-transform:uppercase;letter-spacing:.04em}
+  .rm-arrows{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+  .rm-dep{fill:none;stroke:var(--muted);stroke-width:1.6;opacity:.85;pointer-events:stroke}
+  .rm-dep.against{stroke:var(--critical);stroke-width:2.2;opacity:1}
+  .rm-dep.cyc{stroke:var(--serious);stroke-dasharray:5 4}
+  .rm-head{fill:var(--muted)}
+  .rm-head.against{fill:var(--critical)}
+  .rm-block{position:absolute;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);
+    border-left:4px solid var(--sc);border-radius:9px;background:var(--surface-2);cursor:pointer;z-index:2;
+    display:flex;flex-direction:column;gap:4px;overflow:hidden}
+  .rm-block:hover{border-color:var(--link)}
+  .rm-block.sel{box-shadow:0 0 0 2px var(--link)}
+  .rm-block.ahead{border-style:dashed;border-left-style:solid}
+  .rm-block.cyc{outline:2px dashed var(--serious);outline-offset:1px}
+  .rm-t{font-size:12.5px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .rm-m{display:flex;gap:7px;align-items:center;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden}
+  .rm-p .cid{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rm-s{display:inline-flex;align-items:center;gap:4px}
+  .rm-r{margin-left:auto;font-variant-numeric:tabular-nums}
+  .rm-p{display:flex;gap:6px;align-items:center;margin-top:auto}
+  .rm-p .pbar{flex:1;height:6px}
+  .rm-pn{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .rm-ahead{font-size:10px;color:var(--warning);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+  .rm-detail{margin-top:12px;padding-bottom:6px}
+  .rm-detail[hidden]{display:none}
+  .rm-dh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px}
+  .rm-dh .facet{margin-left:auto}
+  .rm-dl{padding:8px 14px 4px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
+    border-top:1px solid var(--border)}
+  body.hide-done .rm-dl.is-done{display:none}     /* "hide done" hides the rows, so their heading goes too */
+  .rm-links{list-style:none;margin:0;padding:0 14px 8px}
+  .rm-links li{padding:3px 0;font-size:12.5px}
+  .rm-links .flag{margin-left:6px}
+  #rmNote div + div{margin-top:3px}

@@ -22,6 +22,9 @@
        sentence, so give it its own line rather than letting it strand a chip beside it */
     #epicSort .facet{padding:5px 11px;font-size:12px}
     #epicSort .facet-hint{flex-basis:100%;margin-left:0}
+    /* roadmap: the board keeps its fixed geometry and scrolls inside its card; the detail
+       pane's child rows reuse the epic-child layout below */
+    .rm-dh .facet{margin-left:0}
     /* epic child rows → id+idle / title / badges */
     .echild{grid-template-columns:auto 1fr auto;row-gap:5px;column-gap:8px;padding:10px 12px 10px 16px;font-size:12.5px}
     .echild .eeid{grid-column:1;grid-row:1}

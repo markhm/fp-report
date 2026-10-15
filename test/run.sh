@@ -67,6 +67,8 @@ orph(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_orp
 sg(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_signals.js" "$@"; }
 # ep <html> <check> [args…] — assert on the epic roadmap's sort (same skip)
 ep(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_epics.js" "$@"; }
+# rmap <html> <check> [args…] — assert on the Roadmap tab's order, board and generator (same skip)
+rmap(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_roadmap.js" "$@"; }
 # tr <html> <check> [args…] — assert on the cumulative-flow replay (same skip)
 tr(){ command -v node >/dev/null 2>&1 || return 0; node "$ROOT/test/assert_trends.js" "$@"; }
 # flow <html> <check> [args…] — assert on the flow derivative (same skip)
@@ -169,6 +171,92 @@ t "…under every key"                         ep "$EPI" keepsopen epic0001 acti
 # and the id itself is a copy chip for the devices that have no right-click
 t "an epic row carries its display id"       ep "$EPI" html 'data-id="FP-epic0001"'
 t "…and the id is a copy chip"               ep "$EPI" html '<span class="cid">FP-epic0001</span>'
+
+# ---- roadmap: open epics in theme lanes, in the order to take them ----
+RMF="$ROOT/test/fixture.roadmap.json"
+RMC="$TMP/roadmap.conf"; mkconf "$RMC" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'RANK_PROPERTY="rank"' 'ROADMAP_EXCLUDE="FP-bugs0001"'
+RMH="$TMP/roadmap.html"; render "$RMH" "$RMF" "$RMC"
+t "roadmap fixture renders"                  test -s "$RMH"
+t "roadmap JS parses"                        jsparse "$RMH"
+t "Roadmap tab sits right before Epics"      bash -c '[ "$(grep -n "data-panel=\"panel-roadmap\"" "'"$RMH"'" | head -1 | cut -d: -f1)" -lt "$(grep -n "data-panel=\"panel-epics\"" "'"$RMH"'" | head -1 | cut -d: -f1)" ]'
+t "rank property + exclude list injected"    grep -q 'const ROADMAP_CONFIG = {"rankProperty":"rank","exclude":\["bugs0001"\]}' "$RMH"
+# dependency first (alt00001 is ranked 10 but waits on edge0001, ranked 30), then rank, then
+# the unranked by priority (tie0001a is high) and then status (selected tie0002a before todo)
+RM_ORDER="prog0001,edge0001,alt00001,tie0001a,tie0002a,tie0001b,tie0002b,badr0001"
+t "order: dependencies, rank, priority, status" rmap "$RMH" order "$RM_ORDER"
+# open with children only: the excluded bucket, the childless Epic: title and the closed
+# epic are all off the lanes
+t "eight open epics with children, one block each" rmap "$RMH" blocks 8
+t "…the excluded bucket is not on a lane"    bash -c '! node "'"$ROOT"'/test/assert_roadmap.js" "'"$RMH"'" html roadmap "FP-bugs0001"'
+t "…and the exclusion is named in the note"   rmap "$RMH" html rmNote "Left off by ROADMAP_EXCLUDE: FP-bugs0001"
+t "lanes are the Themes tab's themes"        rmap "$RMH" lanes "security,reliability,maintainability"
+t "…resolved the way the Themes tab does"    rmap "$RMH" lane tie0002a security
+# c21 (in alt00001) waits on c11 (in edge0001): lifted to the two epics. c41 waits on DONE
+# work, which holds nothing back, so it lifts nothing
+t "a child dependency is lifted to the epics" rmap "$RMH" edges 1
+t "…and drawn red: rank says the other order" rmap "$RMH" edge edge0001 alt00001 against
+t "…which the note counts"                   rmap "$RMH" html rmNote "1 drawn red"
+t "a rank that is not a number is reported"  rmap "$RMH" html rmNote "read as unranked: FP-badr0001"
+t "blocks carry their rank"                  rmap "$RMH" html roadmap '>#10<'
+t "not-started epics left of Now are marked" rmap "$RMH" ahead "edge0001,tie0001a"
+t "the Now line is drawn"                    rmap "$RMH" html roadmap 'class="rm-now"'
+t "a block unfolds into its issues"          rmap "$RMH" select alt00001 'FP-qsxp0001'
+t "…grouped by status"                       rmap "$RMH" select alt00001 '<div class="rm-dl is-done">Done · 1</div>'
+t "…the open ones under their own heading"   rmap "$RMH" select alt00001 '<div class="rm-dl">Backlog · 1</div>'
+t "…with what it waits on"                   rmap "$RMH" select alt00001 'via FP-qsxp0001 → FP-dtmz0001'
+# the generator, on fixed cases
+t "generator: a free gap rewrites only the moved epic" rmap "$RMH" plan gap
+t "…to the front"                            rmap "$RMH" plan front
+t "…to the end"                              rmap "$RMH" plan end
+t "generator: no gap renumbers the fewest"   rmap "$RMH" plan nogap
+t "generator: first ranks, spaced by 10"     rmap "$RMH" plan seed
+t "generator: an unranked tail stays unranked" rmap "$RMH" plan tail
+t "commands refuse anything but an ID"       rmap "$RMH" unsafe 'FP-x;rm -rf ~'
+t "…including a title-like key"              rmap "$RMH" unsafe 'Edge protection'
+# the acceptance criterion, headless: drag, apply the commands, regenerate, same order
+t "a dragged order survives the regenerate"  rmap "$RMH" replay "tie0002b,prog0001,edge0001,alt00001,tie0001a,tie0002a,tie0001b,badr0001" tie0002b
+t "…also when an unranked epic jumps a tie"  rmap "$RMH" replay "prog0001,edge0001,alt00001,badr0001,tie0001a,tie0002a,tie0001b,tie0002b" badr0001
+t "a drop before a dependency is refused"    rmap "$RMH" refuse alt00001 0
+t "the local build has the reorder view"     rmap "$RMH" reorder yes
+# without a rank property: still a roadmap, in dependency, priority and status order
+RMN="$TMP/roadmap-norank.html"; render "$RMN" "$RMF" "$TMP/base.conf"
+# (no ROADMAP_EXCLUDE here either, so the "Bugs" bucket takes its place among the mediums)
+t "no RANK_PROPERTY still renders"           rmap "$RMN" order "edge0001,alt00001,tie0001a,prog0001,tie0002a,bugs0001,tie0001b,tie0002b,badr0001"
+t "…red where priority disagrees"            rmap "$RMN" edge edge0001 alt00001 against
+t "…says reordering is off"                  rmap "$RMN" html rmNote "No RANK_PROPERTY is configured"
+t "…and without the exclusion the bucket is back" rmap "$RMN" html roadmap "FP-bugs0001"
+# a cycle is reported, never looped on
+cat > "$TMP/cycle.json" <<'JSON'
+{"issues":[
+ {"id":"a","shortId":"cyca0001","title":"A","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"a1","shortId":"cyca0002","title":"A1","description":"","status":"todo","priority":"high","parent":"a","dependencies":["b1"],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"b","shortId":"cycb0001","title":"B","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"b1","shortId":"cycb0002","title":"B1","description":"","status":"todo","priority":"high","parent":"b","dependencies":["a1"],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"c","shortId":"cycc0001","title":"C","description":"","status":"todo","priority":"low","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"},
+ {"id":"c1","shortId":"cycc0002","title":"C1","description":"","status":"todo","priority":"low","parent":"c","dependencies":["a1"],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"}
+]}
+JSON
+RMY="$TMP/roadmap-cycle.html"; mkconf "$TMP/cyc.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'RANK_PROPERTY="rank"'
+render "$RMY" "$TMP/cycle.json" "$TMP/cyc.conf"
+t "a dependency cycle still renders"         rmap "$RMY" order "cyca0001,cycb0001,cycc0001"
+t "…one block per epic"                      rmap "$RMY" blocks 3
+t "…the cycle is named"                      rmap "$RMY" cyclic "cyca0001,cycb0001"
+t "…in the note"                             rmap "$RMY" html rmNote "Dependency cycle: FP-cyca0001, FP-cycb0001"
+t "…its arrows are drawn as a cycle"         rmap "$RMY" edge cyca0001 cycb0001 cyc
+t "…and an epic behind it keeps its arrow"   rmap "$RMY" edge cyca0001 cycc0001 plain
+# local only is a build switch: --publish (fp-report-deploy) ships none of the reorder code
+RMP="$TMP/roadmap-publish.html"
+"$ENGINE" -c "$RMC" --issues-file "$RMF" -o "$RMP" --no-open --publish >/dev/null 2>&1
+t "a --publish build renders the roadmap"    rmap "$RMP" order "$RM_ORDER"
+t "…without the reorder view"                rmap "$RMP" reorder no
+t "…no generator, drag or command code in it" bash -c 'for s in rankPlan rankCommands "function rmDecorate" draggable dragstart rm-cmds rm-drop "fp issue update"; do grep -q -- "$s" "'"$RMP"'" && exit 1; done; exit 0'
+t "…while the local build has all of it"     bash -c 'for s in rankPlan rankCommands draggable dragstart rm-cmds rm-drop "fp issue update"; do grep -q -- "$s" "'"$RMH"'" || exit 1; done'
+t "…and the publish build still parses"       jsparse "$RMP"
+t "fp-report-deploy builds with --publish"   grep -q -- '-o "$DEST" --no-open --publish' "$ROOT/fp-report-deploy.sh"
+bad_rankprop(){ mkconf "$TMP/badr.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'RANK_PROPERTY="rank; rm"'
+  local out; out="$("$ENGINE" -c "$TMP/badr.conf" --issues-file "$RMF" -o "$TMP/badr.html" --no-open 2>&1)" && return 1
+  printf '%s' "$out" | grep -q "RANK_PROPERTY must be a property key"; }
+t "a RANK_PROPERTY that is not a key aborts" bad_rankprop
 
 # ---- focus + signals: the plan-level view of the backlog ----
 SIG="$TMP/signals.html"
@@ -407,7 +495,7 @@ t "months start on the 1st"                   flow "$TRD" start month 2026-06-20
 t "days are their own bucket"                 flow "$TRD" start day 2026-06-20 2026-06-20
 
 # ---- REPORTS_INCLUDED: choose which tabs get built ----
-t "unset REPORTS_INCLUDED builds them all"   grep -q 'const REPORTS = \["focus","signals","themes","epics","issues","orphans","trends","flow"\]' "$BASE"
+t "unset REPORTS_INCLUDED builds them all"   grep -q 'const REPORTS = \["focus","signals","themes","roadmap","epics","issues","orphans","trends","flow"\]' "$BASE"
 RI="$TMP/subset.html"; mkconf "$TMP/ri.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'REPORTS_INCLUDED="Themes, Issues"'
 render_h "$RI" "$FIX" "$ROOT/test/fixture.history.txt" "$TMP/ri.conf"
 t "a subset renders"                         test -s "$RI"
