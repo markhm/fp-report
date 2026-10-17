@@ -187,6 +187,11 @@ t "order: dependencies, rank, priority, status" rmap "$RMH" order "$RM_ORDER"
 # open with children only: the excluded bucket, the childless Epic: title and the closed
 # epic are all off the lanes
 t "eight open epics with children, one block each" rmap "$RMH" blocks 8
+# REVIEW_TITLE_RE (default ^code review): a review of its parent is not scope, here as on the
+# Epics tab: work0001's only child is its review, so it is no epic; prog0001's finished
+# review does not count toward its progress (one done of two, not two of three)
+t "a work item with only a review is no epic" bash -c '! node "'"$ROOT"'/test/assert_roadmap.js" "'"$RMH"'" html roadmap "FP-work0001"'
+t "…and a review is not progress"            rmap "$RMH" progress prog0001 1/2
 t "…the excluded bucket is not on a lane"    bash -c '! node "'"$ROOT"'/test/assert_roadmap.js" "'"$RMH"'" html roadmap "FP-bugs0001"'
 t "…and the exclusion is named in the note"   rmap "$RMH" html rmNote "Left off by ROADMAP_EXCLUDE: FP-bugs0001"
 t "lanes are the Themes tab's themes"        rmap "$RMH" lanes "security,reliability,maintainability"

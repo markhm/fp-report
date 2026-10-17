@@ -87,10 +87,11 @@ function rmCycles(ids, out){
 }
 
 // ---- the epics on the roadmap, and the dependencies lifted onto them ----
-// An epic here is an OPEN issue with children (stricter than the Epics tab, which also lists
-// childless "Epic"-titled issues: a block with nothing inside has nothing to sequence).
+// An epic here is an OPEN issue with children in scope (scopeOf, model.js: a "Code review: …"
+// child reviews its parent and is not scope). Stricter than the Epics tab, which also lists
+// childless "Epic"-titled issues: a block with nothing inside has nothing to sequence.
 // ROADMAP_EXCLUDE keeps catch-all parents, such as a "Bugs" bucket, off the lanes.
-const rmEpics = ISSUES.filter(i=>i._open && kids.has(i.id) && !RM_EXCLUDE.has(i.shortId));
+const rmEpics = ISSUES.filter(i=>i._open && scopeOf(i).length && !RM_EXCLUDE.has(i.shortId));
 const rmSet = new Set(rmEpics.map(e=>e.id));
 // the roadmap epic that owns an issue: itself, else its nearest ancestor on the roadmap
 const rmOwnerCache = new Map();
@@ -164,12 +165,13 @@ function rmLabel(e, slot){
   return [`${slot+1}. ${e.title}`, (STATUS_META[e.status]||{label:e.status}).label,
           `${PRIO_META[prioKey(e.priority)].label} priority`, ...against].join(", ");
 }
-// Progress counts every descendant, not just direct children: an epic whose work sits in
-// sub-epics would otherwise read as "0/2" while dozens of issues below it are done.
+// Progress counts every descendant in scope, not just direct children: an epic whose work
+// sits in sub-epics would otherwise read as "0/2" while dozens of issues below it are done.
+// Reviews are left out at every level, as on the Epics tab.
 // `seen` guards a malformed parent loop.
 function rmDescendants(id, seen = new Set()){
   const out = [];
-  for(const c of kids.get(id) || []){
+  for(const c of scopeOf(byId.get(id))){
     if(seen.has(c.id)) continue;
     seen.add(c.id); out.push(c, ...rmDescendants(c.id, seen));
   }
@@ -253,7 +255,7 @@ function renderRoadmapDetail(){
   const pane = document.getElementById("rmDetail");
   const e = rmSel && byId.get(rmSel);
   if(!e || !rmSet.has(e.id)){ pane.hidden = true; pane.innerHTML = ""; return; }
-  const ch = kids.get(e.id) || [];
+  const ch = scopeOf(e);
   const groups = STATUS_LIST.map(s=>({s, items: ch.filter(c=>c.status===s.key)}))
     .concat([{s:{key:"?", label:"Other"}, items: ch.filter(c=>!STATUS_META[c.status])}])
     .filter(g=>g.items.length);

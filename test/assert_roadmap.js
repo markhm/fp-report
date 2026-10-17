@@ -8,6 +8,7 @@
  *     edge     <from> <to> <cls>     a lifted dependency arrow and its class (plain|against|cyc)
  *     edges    <n>                   how many epic-to-epic dependencies were lifted
  *     blocks   <n>                   how many blocks the board draws
+ *     progress <sid> <done/total>    the progress a block shows
  *     cyclic   <sid,sid,…>           the epics reported on a dependency cycle
  *     ahead    <sid,sid,…>           not-started epics placed before the Now line
  *     select   <sid> <substring>     click a block; the detail pane contains this
@@ -66,6 +67,10 @@ eval(app + `
   } else if (CHECK === "blocks") {
     const got = (document.getElementById("roadmap").innerHTML.match(/class="rm-block[ "]/g) || []).length;
     res(got === Number(A[0]), "blocks: expected " + A[0] + ", got " + got);
+  } else if (CHECK === "progress") {
+    const m = document.getElementById("roadmap").innerHTML.match(
+      new RegExp('data-id="' + IDP + A[0] + '"[^]*?class="rm-pn"[^>]*>([^<]+)<'));
+    res(!!m && m[1] === A[1], A[0] + " progress: expected " + A[1] + ", got " + (m && m[1]));
   } else if (CHECK === "edges") {
     res(rmEdges.length === Number(A[0]), "edges: expected " + A[0] + ", got " + rmEdges.length);
   } else if (CHECK === "cyclic") {
