@@ -9,8 +9,8 @@
 #   fp-report -c PATH/conf     # use an explicit project config
 #   fp-report -o PATH.html     # write to a custom output path
 #   fp-report --issues-file J  # render JSON J instead of calling fp (offline/CI)
-#   fp-report --no-labels      # skip the per-issue label fetch (faster, no themes from labels)
-#   fp-report --refresh-labels # ignore the label cache and re-fetch every issue
+#   fp-report --no-labels      # older fp only: skip the per-issue property fetch
+#   fp-report --refresh-labels # older fp only: ignore the property cache, re-fetch
 #   fp-report --no-history     # skip the 'fp log' replay (drops Trends + Flow)
 #   fp-report --history-file L # replay this saved 'fp log' output (offline/CI)
 #   fp-report --publish        # build for publishing: no local-only code (Roadmap reorder)
@@ -132,7 +132,7 @@ main() {
             --open)        DO_OPEN=true ;;          # default; kept for back-compat
             --init)        INIT=true ;;
             --theme)       shift; THEME_ARG="$1" ;;
-            --no-labels)   LABELS_ARG=false ;;      # skip the per-issue property fetch
+            --no-labels)   LABELS_ARG=false ;;      # skip the older-fp property fetch
             --labels)      LABELS_ARG=true ;;
             --refresh-labels) REFRESH_LABELS=true ;;   # ignore the cache, re-fetch everything
             --no-history)  HISTORY_ARG=false ;;     # skip the 'fp log' replay
@@ -172,7 +172,7 @@ main() {
     OUTPUT_FILE="fp-report.html"
     OUTPUT_DIR=""                                  # empty → CONF_DIR/../reports
     ASSETS_DIR=""                                  # empty → OUTPUT_DIR (logos live with the report)
-    FETCH_LABELS=true                              # enrich the backlog with each issue's labels
+    FETCH_LABELS=true                              # older fp: fetch properties the list lacks
     LABEL_CACHE=""                                 # empty → OUTPUT_DIR/.fp-report.labels.json
     LABEL_JOBS=12                                  # parallel 'fp issue show' calls
     FETCH_HISTORY=true                             # replay 'fp log' for the Trends tab
@@ -231,11 +231,13 @@ main() {
         ( cd "$CONF_DIR" && fp issue list --limit 5000 --format json ) > "$TMP_JSON"
     fi
 
-    # ---- enrich with per-issue properties (labels) ----
-    # 'fp issue list' omits `properties` entirely; only 'fp issue show' returns it. So the
-    # labels the Themes page prefers over inference need one call per issue (~0.2s each).
-    # We cache them keyed on the issue's updatedAt, so only issues that actually changed
-    # since the last report are re-fetched: first run costs ~1s/15 issues, later runs ~0.
+    # ---- properties (labels, workstation, rank): a fallback for an older fp ----
+    # fp 0.25 returns every issue's `properties` from 'fp issue list' itself (identical to
+    # 'fp issue show' on all 1839 issues of a large project), so normally there is nothing to
+    # do here and no call is made. An older fp omitted the key, and only 'fp issue show' had
+    # it, at one call per issue (~0.2s each). For exactly those issues, the ones the list
+    # returned WITHOUT a `properties` key, this fetches them, cached on updatedAt so only
+    # issues that changed since the last report are fetched again.
     [ -z "$LABELS_ARG" ] || FETCH_LABELS="$LABELS_ARG"
     [ -n "$LABEL_CACHE" ] || LABEL_CACHE="$OUTPUT_DIR/.fp-report.labels.json"
     LABEL_CACHE="$(resolve_under "$LABEL_CACHE" "$CONF_DIR")"
@@ -249,6 +251,11 @@ path, cache_path = os.environ["JSON"], os.environ["CACHE"]
 jobs, cwd = int(os.environ["JOBS"] or 12), os.environ["CWD"]
 doc = json.load(open(path, encoding="utf-8"))
 issues = doc.get("issues", doc) if isinstance(doc, dict) else doc
+# only issues the list returned without properties need anything; on fp >= 0.25 that is none,
+# and the report, the cache and fp are left untouched
+need = [i for i in issues if "properties" not in i]
+if not need:
+    sys.exit(0)
 
 cache = {}
 if os.environ.get("REFRESH") != "true":
@@ -258,7 +265,7 @@ if os.environ.get("REFRESH") != "true":
         cache = {}                      # missing/corrupt cache is not an error — just refetch
 
 # stale = never seen, or edited since we cached it
-stale = [i for i in issues
+stale = [i for i in need
          if cache.get(i["id"], {}).get("updatedAt") != i.get("updatedAt")]
 
 def fetch(i):
@@ -271,16 +278,16 @@ def fetch(i):
 
 if stale:
     print(f"  fetching labels for {len(stale)} issue(s) "
-          f"({len(issues)-len(stale)} cached)…", file=sys.stderr)
+          f"({len(need)-len(stale)} cached)…", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=jobs) as ex:
         for iid, props in ex.map(fetch, stale):
             if props is None: continue
             cache[iid] = {"updatedAt": next(i["updatedAt"] for i in stale if i["id"] == iid),
                           "properties": props}
 
-live = {i["id"] for i in issues}
-cache = {k: v for k, v in cache.items() if k in live}     # drop deleted issues
-for i in issues:
+live = {i["id"] for i in need}
+cache = {k: v for k, v in cache.items() if k in live}     # drop deleted issues, and ones the list now covers
+for i in need:
     i["properties"] = cache.get(i["id"], {}).get("properties", {})
 
 json.dump(doc, open(path, "w", encoding="utf-8"))

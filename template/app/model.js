@@ -103,7 +103,7 @@ for(const i of ISSUES){
   const ch = scopeOf(i);
   i._isEpic = ch.length>0 || isEpicTitle(i);
   // the workstation property is an fp workflow claim ('<machine>:<tree>'); absent on
-  // projects without that extension, and only fetched with labels (FETCH_LABELS)
+  // projects without that extension (properties come from 'fp issue list', see the engine)
   i._claim = (i.properties||{}).workstation || "";
   // Urgent work nobody has touched. An epic WITH children is left out, because its own
   // updatedAt only moves when the epic RECORD is edited (the Epics tab rolls activity up

@@ -59,8 +59,8 @@ shared here). `fp-report.conf` — sourced as bash — sets:
 | `REPORT_TITLE` | on-page heading |
 | `STATUS_FILE` | status registry (see below) |
 | `THEMES_FILE` | theme taxonomy for the Themes tab (see below) |
-| `FETCH_LABELS` | fetch each issue's labels (default `true`; see below) |
-| `LABEL_CACHE` / `LABEL_JOBS` | label cache path / parallel fetches (defaults are fine) |
+| `FETCH_LABELS` | older fp only: fetch the properties `fp issue list` leaves out (default `true`; see below) |
+| `LABEL_CACHE` / `LABEL_JOBS` | older fp only: property cache path / parallel fetches (defaults are fine) |
 | `FETCH_HISTORY` | replay `fp log` for the Trends/Flow tabs (default `true`; see below) |
 | `HISTORY_LIMIT` | `fp log --limit` (default `200000` — i.e. "everything") |
 | `REPORTS_INCLUDED` | which tabs to build (default: all; see below) |
@@ -198,19 +198,26 @@ real labels and the rest from keywords and epic inheritance. The **Unthemed** ti
 the per-tile `N labelled` figure are there to show you exactly where that gap is; label
 the epics first, since sub-issues inherit from them.
 
-### Labels (`FETCH_LABELS`)
+### Labels and other properties (`FETCH_LABELS`)
 
-`fp issue list` omits `properties`, so labels are only available via one
-`fp issue show` call per issue. The engine fetches them in parallel and caches the
-result by `updatedAt` next to the report, re-fetching only issues that changed — a
-cold run on a ~1000-issue backlog takes about a minute, later runs under a second.
+Labels, the `workstation` claim and the Roadmap rank are fp issue **properties**. fp 0.25
+returns them from `fp issue list` itself, so the report reads them in the same single call
+as everything else: no extra calls, no cache. (Checked on a 1,839-issue backlog: the list's
+properties were identical to `fp issue show`'s for every issue.)
+
+An **older fp** left `properties` out of the list, and only `fp issue show` had them. For
+exactly the issues the list returns without them, the engine falls back to one `show` per
+issue, in parallel, cached by `updatedAt` next to the report so only changed issues are
+fetched again. A cold run on a ~1000-issue backlog took about a minute that way, later runs
+under a second.
 
 ```sh
-fp-report --no-labels        # skip it entirely (themes then come from keywords only)
-fp-report --refresh-labels   # ignore the cache and re-fetch everything
+fp-report --no-labels        # older fp: skip the fallback (themes then come from keywords only)
+fp-report --refresh-labels   # older fp: ignore the cache and fetch again
 ```
 
-The cache (`.fp-report.labels.json`) is a derived file — don't commit it.
+The cache (`.fp-report.labels.json`) is a derived file — don't commit it. On fp 0.25 it is
+no longer written; an old one can be deleted.
 
 ### Colour themes (`fp-report.theme.css`)
 
@@ -268,8 +275,8 @@ nothing in motion is paused, and its backlog status says so truthfully.
 
 The thresholds are validated: a value that is not a whole number aborts the run, because a
 threshold that quietly fell back to its default would make a signal look calmer than the
-backlog is. `workstation` is read from issue properties, which are only fetched with labels
-(`FETCH_LABELS=true`); without it the claim is simply not shown.
+backlog is. `workstation` is read from issue properties (see [Labels](#labels-and-other-properties-fetch_labels));
+on a project without that extension the claim is simply not shown.
 
 ## Roadmap — which epic next, and after that
 

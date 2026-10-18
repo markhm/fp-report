@@ -7,6 +7,11 @@ template, or tooling — not the issue data a given report happens to show.
 ## [Unreleased]
 
 ### Changed
+- **No per-issue `fp issue show` on a current fp.** fp 0.25 returns every issue's properties
+  from `fp issue list` (identical to `show` on all 1,839 issues of a large backlog), so the
+  label fetch now runs only for issues the list returns without them, i.e. on an older fp.
+  On fp 0.25 a cold run makes no extra calls and writes no label cache. `FETCH_LABELS`,
+  `--no-labels` and `--refresh-labels` now govern only that fallback.
 - **The template is now a directory of parts** (`template/`): the page shell plus
   `styles/*.css` and `app/*.js`, inlined at render time via `<!--#include path -->`.
   The output is unchanged — still one self-contained HTML file, verified byte-identical

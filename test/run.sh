@@ -132,6 +132,32 @@ TH="$TMP/themes.html"; mkconf "$TMP/th.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'TH
 render "$TH" "$FIX" "$TMP/th.conf"
 t "missing themes file falls back to defaults" grep -q '"label": "Work type"' "$TH"
 t "fallback taxonomy still parses"             jsparse "$TH"
+# ---- properties: from the list on fp >= 0.25, 'fp issue show' only as an older-fp fallback ----
+# A fake fp on PATH serves 'issue list' (FAKE_FP=mixed: one issue with properties, one without,
+# as an older fp returned them; FAKE_FP=new: both with) and logs every 'issue show' it is asked.
+FAKEFP="$TMP/fakefp"; mkdir -p "$FAKEFP"
+cat > "$FAKEFP/fp" <<'SH'
+#!/bin/bash
+if [ "$1 $2" = "issue list" ]; then
+  if [ "$FAKE_FP" = new ]; then P2=',"properties":{"labels":["reliability"]}'; else P2=''; fi
+  printf '{"issues":[{"id":"n1","shortId":"newp0001","title":"Has properties","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z","properties":{"labels":["security"]}},{"id":"o1","shortId":"oldp0001","title":"Lacks properties","description":"","status":"todo","priority":"high","parent":null,"dependencies":[],"createdAt":"2026-06-01T10:00:00Z","updatedAt":"2026-07-01T10:00:00Z"%s}]}\n' "$P2"
+elif [ "$1 $2" = "issue show" ]; then
+  echo "$3" >> "$FAKE_FP_LOG"; printf '{"properties":{"labels":["reliability"]}}\n'
+fi
+SH
+chmod +x "$FAKEFP/fp"
+FPC="$TMP/fakefp.conf"; mkconf "$FPC" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'FETCH_HISTORY="false"' "OUTPUT_DIR=\"$TMP/fakeout\""
+fakerun(){ PATH="$FAKEFP:$PATH" FAKE_FP="$1" FAKE_FP_LOG="$TMP/fake.calls" "$ENGINE" -c "$FPC" -o "$TMP/fake.html" --no-open >/dev/null 2>&1; }
+labels_of(){ python3 -c 'import json,re,sys;h=open(sys.argv[1]).read();d=json.loads(re.search(r"id=\"fp-data\">(.*?)</script>",h,re.S).group(1));print(",".join(i["shortId"]+"="+"+".join((i.get("properties") or {}).get("labels",[])) for i in d["issues"]))' "$TMP/fake.html"; }
+: > "$TMP/fake.calls"; fakerun new
+t "fp lists properties: no 'issue show' at all" test ! -s "$TMP/fake.calls"
+t "…the list's properties are used as they are" test "$(labels_of)" = "newp0001=security,oldp0001=reliability"
+t "…and no property cache is written"         test ! -e "$TMP/fakeout/.fp-report.labels.json"
+: > "$TMP/fake.calls"; fakerun mixed
+t "older fp: only the issue without properties is fetched" bash -c '[ "$(cat "'"$TMP"'/fake.calls")" = "oldp0001" ]'
+t "…and both issues end up with their labels" test "$(labels_of)" = "newp0001=security,oldp0001=reliability"
+: > "$TMP/fake.calls"; fakerun mixed
+t "…a second run fetches nothing (cached)"   test ! -s "$TMP/fake.calls"
 NL="$TMP/nolabels.html"; mkconf "$TMP/nl.conf" 'FP_PREFIX="FP"' 'APP_NAME="x"' 'FETCH_LABELS="false"'
 render "$NL" "$FIX" "$TMP/nl.conf"
 t "FETCH_LABELS=false still renders"           test -s "$NL"
