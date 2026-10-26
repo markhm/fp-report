@@ -665,7 +665,7 @@ bash test/run.sh        # the whole suite; exits non-zero if anything fails
 through the real engine with `--issues-file` and asserts on the produced HTML. It needs
 `bash` + `python3`; `node` is optional and only unlocks the JS-level checks (they skip
 silently without it). CI runs the same one line on every push
-(`.github/workflows/tests.yml`, Node 20).
+(`.github/workflows/tests.yml`, Node 24).
 
 What it covers: placeholder replacement and injection safety (a hostile issue title must
 not break out of the embedded JSON), prefix/title/theme/status/taxonomy injection and

@@ -21,6 +21,10 @@ template, or tooling — not the issue data a given report happens to show.
 - `install.sh` and `export.sh` moved to `tools/`. The engine itself did not move, so
   existing `~/bin/fp-report` symlinks keep working — only the install/export commands
   gain a `tools/` prefix.
+- **CI runs the suite on Node 24, not Node 20.** Node 20 is end-of-life and has no release
+  fixing CVE-2026-111497 (Brotli decoder). `check-latest` makes setup-node take the newest
+  24.x rather than the runner's cached one, which was 24.21.0, older than the fixed 24.22.1.
+  `actions/checkout` and `actions/setup-node` move from v4 to v7.
 
 ### Fixed
 - **`fp-report-deploy` works when installed as a symlink** (`tools/install.sh`, a bin
